@@ -232,7 +232,7 @@ export default function Home() {
 				<CardTitle className="flex justify-between items-center">
 					Review Your Comparisons
 					<div className="flex gap-2">
-						{process.env.NODE_ENV === "development" && (
+						{(
 							<Button
 								variant="outline"
 								onClick={handleFillRandom}
