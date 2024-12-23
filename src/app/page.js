@@ -7,6 +7,12 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Label } from "@/components/ui/label";
 import {
+	Dialog,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
+import {
 	generatePairs,
 	formatRepoName,
 	isValidMultiplier,
@@ -34,6 +40,7 @@ export default function Home() {
 	const [reasoning, setReasoning] = useState("");
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [isAllCompleted, setIsAllCompleted] = useState(false);
+	const [isSubmitted, setIsSubmitted] = useState(false);
 
 	const handleValidate = async (e) => {
 		e.preventDefault();
@@ -206,6 +213,7 @@ export default function Home() {
 			const data = await response.json();
 
 			if (response.ok) {
+				setIsSubmitted(true);
 				setShowSuccessDialog(true);
 			} else {
 				setError(data.error || "Failed to submit comparisons");
@@ -224,12 +232,20 @@ export default function Home() {
 				<CardTitle className="flex justify-between items-center">
 					Review Your Comparisons
 					<div className="flex gap-2">
-						{
-							<Button variant="outline" onClick={handleFillRandom}>
+						{process.env.NODE_ENV === "development" && (
+							<Button
+								variant="outline"
+								onClick={handleFillRandom}
+								disabled={isSubmitted}
+							>
 								Fill Random (Dev)
 							</Button>
-						}
-						<Button variant="outline" onClick={() => setShowReviewPanel(false)}>
+						)}
+						<Button
+							variant="outline"
+							onClick={() => setShowReviewPanel(false)}
+							disabled={isSubmitted}
+						>
 							Close
 						</Button>
 					</div>
@@ -255,6 +271,7 @@ export default function Home() {
 							<Button
 								variant="outline"
 								onClick={() => handleEditComparison(index)}
+								disabled={isSubmitted}
 							>
 								Edit
 							</Button>
@@ -352,7 +369,10 @@ export default function Home() {
 										</Alert>
 									)}
 									<div className="flex justify-center mt-4">
-										<Button onClick={handleSubmit} disabled={isSubmitting}>
+										<Button
+											onClick={handleSubmit}
+											disabled={isSubmitting || isSubmitted}
+										>
 											{isSubmitting ? (
 												<>
 													<Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -377,6 +397,7 @@ export default function Home() {
 						<Button
 							variant="outline"
 							onClick={() => setShowReviewPanel(!showReviewPanel)}
+							disabled={isSubmitted}
 						>
 							{showReviewPanel ? "Hide Review" : "Show Review"}
 						</Button>
@@ -400,6 +421,7 @@ export default function Home() {
 										variant={selectedChoice === 1 ? "default" : "outline"}
 										onClick={() => handleChoiceSelect(1)}
 										className="flex-1 max-w-xs"
+										disabled={isSubmitted}
 									>
 										{formatRepoName(pairs[currentPairIndex][0])}
 									</Button>
@@ -407,6 +429,7 @@ export default function Home() {
 										variant={selectedChoice === 2 ? "default" : "outline"}
 										onClick={() => handleChoiceSelect(2)}
 										className="flex-1 max-w-xs"
+										disabled={isSubmitted}
 									>
 										{formatRepoName(pairs[currentPairIndex][1])}
 									</Button>
@@ -429,11 +452,12 @@ export default function Home() {
 											type="number"
 											value={multiplier}
 											onChange={(e) => setMultiplier(e.target.value)}
-											placeholder="Enter a number (0.01-10)"
+											placeholder="Enter a number (1-10)"
 											className="max-w-[200px]"
-											min="0.01"
+											min="1"
 											max="10"
 											step="0.01"
+											disabled={isSubmitted}
 										/>
 									</div>
 									<div className="space-y-2">
@@ -446,10 +470,11 @@ export default function Home() {
 											onChange={(e) => setReasoning(e.target.value)}
 											placeholder="Explain why you chose this repository and the multiplier value..."
 											className="h-32"
+											disabled={isSubmitted}
 										/>
 									</div>
 									<div className="flex justify-center">
-										<Button onClick={handleNext}>
+										<Button onClick={handleNext} disabled={isSubmitted}>
 											{currentPairIndex < pairs.length - 1
 												? "Next"
 												: "Review & Submit"}
@@ -468,12 +493,12 @@ export default function Home() {
 				</div>
 			)}
 
-			{showSuccessDialog && (
-				<Card className="max-w-2xl mx-auto mt-8">
-					<CardHeader>
-						<CardTitle>Thank You!</CardTitle>
-					</CardHeader>
-					<CardContent className="space-y-4">
+			<Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
+				<DialogContent>
+					<DialogHeader>
+						<DialogTitle>Thank You!</DialogTitle>
+					</DialogHeader>
+					<div className="space-y-4">
 						<div className="text-center">
 							<p>Your comparisons have been submitted successfully.</p>
 							<p className="text-sm text-muted-foreground mt-2">
@@ -482,11 +507,11 @@ export default function Home() {
 							</p>
 						</div>
 						<div className="flex justify-center mt-4">
-							<Button onClick={() => window.close()}>Close</Button>
+							<Button onClick={() => setShowSuccessDialog(false)}>Close</Button>
 						</div>
-					</CardContent>
-				</Card>
-			)}
+					</div>
+				</DialogContent>
+			</Dialog>
 		</div>
 	);
 }

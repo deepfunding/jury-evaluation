@@ -7,31 +7,8 @@ export async function POST(request) {
 		const body = await request.json();
 		const { userData, comparisons } = body;
 
-		// Prepare row data for each comparison
 		const sheetsService = new GoogleSheetsService();
-
-		// Submit each comparison as a separate row
-		for (const comparison of comparisons) {
-			const rowData = {
-				timestamp: new Date().toISOString(),
-				name: userData.name,
-				email: userData.email,
-				inviteCode: userData.inviteCode,
-				itemAIndex: comparison.itemAIndex,
-				itemBIndex: comparison.itemBIndex,
-				itemAName: comparison.itemAName,
-				itemBName: comparison.itemBName,
-				choice: comparison.choice,
-				multiplier: comparison.multiplier,
-				logMultiplier: comparison.logMultiplier,
-				reasoning: comparison.reasoning,
-			};
-
-			await sheetsService.submitRatings({
-				userData,
-				ratings: rowData,
-			});
-		}
+		await sheetsService.submitAllComparisons(userData, comparisons);
 
 		return new Response(
 			JSON.stringify({

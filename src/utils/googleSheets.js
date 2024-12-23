@@ -195,4 +195,59 @@ export class GoogleSheetsService {
 			throw error;
 		}
 	}
+
+	async submitAllComparisons(userData, comparisons) {
+		try {
+			const accessToken = await getAccessToken();
+
+			// First verify the invite code and get row index
+			const codeCheck = await this.findInviteCode(userData.inviteCode);
+			if (!codeCheck.isValid) {
+				throw new Error(codeCheck.message);
+			}
+
+			// Prepare all rows data
+			const rows = comparisons.map((comparison) => [
+				new Date().toISOString(), // timestamp
+				userData.name, // name
+				userData.email, // email
+				userData.inviteCode, // invite code
+				comparison.itemAIndex, // itemAIndex
+				comparison.itemBIndex, // itemBIndex
+				comparison.itemAName, // itemAName
+				comparison.itemBName, // itemBName
+				comparison.choice, // choice
+				comparison.multiplier, // multiplier
+				comparison.logMultiplier, // logMultiplier
+				comparison.reasoning, // reasoning
+			]);
+
+			// Submit all rows in a single request
+			const response = await fetch(
+				`https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEET_ID}/values/responses:append?valueInputOption=RAW`,
+				{
+					method: "POST",
+					headers: {
+						Authorization: `Bearer ${accessToken}`,
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify({
+						values: rows,
+					}),
+				},
+			);
+
+			if (!response.ok) {
+				throw new Error(`Failed to append rows: ${response.statusText}`);
+			}
+
+			// Mark as submitted in juros sheet
+			await this.markAsSubmitted(codeCheck.rowIndex);
+
+			return true;
+		} catch (error) {
+			console.error("Error submitting comparisons:", error);
+			throw error;
+		}
+	}
 }
