@@ -6,12 +6,12 @@ import { GoogleSheetsService } from "@/utils/googleSheets";
 export async function POST(request) {
 	try {
 		const body = await request.json();
-		const { name, email, inviteCode } = body;
+		const { inviteCode } = body;
 
 		// Simple validation
-		if (!name || !email || !inviteCode) {
+		if (!inviteCode) {
 			return new Response(
-				JSON.stringify({ error: "All fields are required" }),
+				JSON.stringify({ error: "Invite code is required" }),
 				{
 					status: 400,
 					headers: {
@@ -19,17 +19,6 @@ export async function POST(request) {
 					},
 				},
 			);
-		}
-
-		// Email format validation
-		const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-		if (!emailRegex.test(email)) {
-			return new Response(JSON.stringify({ error: "Invalid email format" }), {
-				status: 400,
-				headers: {
-					"Content-Type": "application/json",
-				},
-			});
 		}
 
 		// Check invite code in Google Sheets
@@ -45,20 +34,10 @@ export async function POST(request) {
 			});
 		}
 
-		// If all validations pass, set the cookie
-		const cookieStore = await cookies();
-		cookieStore.set("userData", JSON.stringify({ name, email, inviteCode }), {
-			httpOnly: true,
-			secure: process.env.NODE_ENV === "production",
-			sameSite: "strict",
-			path: "/",
-			maxAge: 7200, // 2 hours
-		});
-
 		return new Response(
 			JSON.stringify({
 				success: true,
-				message: "Authentication successful",
+				message: "Invite code is valid",
 			}),
 			{
 				status: 200,
