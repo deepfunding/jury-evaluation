@@ -100,7 +100,7 @@ export class GoogleSheetsService {
 				return { isValid: false, message: "Invalid invite code" };
 			}
 
-      // TODO: Enable submission check in production
+			// TODO: Enable submission check in production
 			// Check if response is already submitted (column E)
 			// if (values[rowIndex][1]?.toLowerCase() === "yes") {
 			// 	return { isValid: false, message: "Response already submitted" };
