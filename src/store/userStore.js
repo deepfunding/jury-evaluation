@@ -4,7 +4,7 @@ export const useUserStore = create((set) => ({
 	userData: {
 		name: "",
 		email: "",
-		uniqueKey: "",
+		inviteCode: "",
 	},
 	setUserData: (data) => set({ userData: data }),
 }));

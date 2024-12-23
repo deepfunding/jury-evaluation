@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function Home() {
 	const router = useRouter();
@@ -14,12 +15,14 @@ export default function Home() {
 	const [formData, setFormData] = useState({
 		name: "Test User",
 		email: "test@example.com",
-		uniqueKey: "DEMO2024",
+		inviteCode: "DEMO2024",
 	});
 	const [error, setError] = useState("");
 
 	const handleSubmit = async (e) => {
 		e.preventDefault();
+		setError("");
+
 		try {
 			const response = await fetch("/api/auth", {
 				method: "POST",
@@ -29,11 +32,13 @@ export default function Home() {
 				body: JSON.stringify(formData),
 			});
 
+			const data = await response.json();
+
 			if (response.ok) {
 				setUserData(formData);
 				router.push("/scoring");
 			} else {
-				setError("Invalid input. Please try again.");
+				setError(data.error || "Invalid input. Please try again.");
 			}
 		} catch (error) {
 			setError("Something went wrong. Please try again.");
@@ -45,6 +50,7 @@ export default function Home() {
 			...formData,
 			[e.target.name]: e.target.value,
 		});
+		setError(""); // Clear error when user starts typing
 	};
 
 	return (
@@ -79,12 +85,12 @@ export default function Home() {
 								/>
 							</div>
 							<div className="space-y-2">
-								<Label htmlFor="uniqueKey">Unique Key</Label>
+								<Label htmlFor="inviteCode">Invite Code</Label>
 								<Input
 									type="text"
-									id="uniqueKey"
-									name="uniqueKey"
-									value={formData.uniqueKey}
+									id="inviteCode"
+									name="inviteCode"
+									value={formData.inviteCode}
 									onChange={handleChange}
 									required
 								/>
@@ -92,8 +98,29 @@ export default function Home() {
 							<Button type="submit" className="w-full">
 								Submit
 							</Button>
+							{error && (
+								<Alert
+									variant={
+										error.includes("already submitted")
+											? "default"
+											: "destructive"
+									}
+								>
+									<AlertDescription>
+										{error.includes("already submitted") ? (
+											<>
+												A response has already been submitted using this invite
+												code.
+												<br />
+												Each invite code can only be used once for submission.
+											</>
+										) : (
+											error
+										)}
+									</AlertDescription>
+								</Alert>
+							)}
 						</form>
-						{error && <p className="mt-4 text-destructive">{error}</p>}
 					</CardContent>
 				</Card>
 			</div>

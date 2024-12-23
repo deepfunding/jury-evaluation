@@ -1,14 +1,15 @@
 export const runtime = "edge";
 
 import { cookies } from "next/headers";
+import { GoogleSheetsService } from "@/utils/googleSheets";
 
 export async function POST(request) {
 	try {
 		const body = await request.json();
-		const { name, email, uniqueKey } = body;
+		const { name, email, inviteCode } = body;
 
 		// Simple validation
-		if (!name || !email || !uniqueKey) {
+		if (!name || !email || !inviteCode) {
 			return new Response(
 				JSON.stringify({ error: "All fields are required" }),
 				{
@@ -31,10 +32,12 @@ export async function POST(request) {
 			});
 		}
 
-		// Unique key validation
-		const validKey = "DEMO2024";
-		if (uniqueKey !== validKey) {
-			return new Response(JSON.stringify({ error: "Invalid unique key" }), {
+		// Check invite code in Google Sheets
+		const sheetsService = new GoogleSheetsService();
+		const codeCheck = await sheetsService.findInviteCode(inviteCode);
+
+		if (!codeCheck.isValid) {
+			return new Response(JSON.stringify({ error: codeCheck.message }), {
 				status: 401,
 				headers: {
 					"Content-Type": "application/json",
@@ -43,8 +46,8 @@ export async function POST(request) {
 		}
 
 		// If all validations pass, set the cookie
-		const cookieStore = cookies();
-		cookieStore.set("userData", JSON.stringify({ name, email, uniqueKey }), {
+		const cookieStore = await cookies();
+		cookieStore.set("userData", JSON.stringify({ name, email, inviteCode }), {
 			httpOnly: true,
 			secure: process.env.NODE_ENV === "production",
 			sameSite: "strict",
