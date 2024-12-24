@@ -17,7 +17,7 @@ import { Loader2 } from "lucide-react";
 import { ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
 
 export default function Home() {
-	const [inviteCode, setInviteCode] = useState("DEMO2024");
+	const [inviteCode, setInviteCode] = useState("");
 	const [error, setError] = useState("");
 	const [isValidated, setIsValidated] = useState(false);
 	const [pairs, setPairs] = useState([]);
@@ -466,12 +466,18 @@ export default function Home() {
 							))}
 						</div>
 						<div className="flex gap-2">
-							{currentReviewRound === round && !isEditMode && isCurrentRoundComplete && (
-								<div className="flex items-center gap-2">
-									<p className="text-sm text-muted-foreground">Would you like to continue with the next round?</p>
-									<Button onClick={handleContinue}>Continue to Next Round</Button>
-								</div>
-							)}
+							{currentReviewRound === round &&
+								!isEditMode &&
+								isCurrentRoundComplete && (
+									<div className="flex items-center gap-2">
+										<p className="text-sm text-muted-foreground">
+											Would you like to continue with the next round?
+										</p>
+										<Button onClick={handleContinue}>
+											Continue to Next Round
+										</Button>
+									</div>
+								)}
 						</div>
 					</div>
 				</CardContent>
@@ -518,7 +524,7 @@ export default function Home() {
 									type="text"
 									value={inviteCode}
 									onChange={(e) => setInviteCode(e.target.value)}
-									placeholder="DEMO2024"
+									placeholder="Enter your invite code"
 									required
 								/>
 								<Button type="submit" disabled={isSubmitting}>
@@ -676,10 +682,10 @@ export default function Home() {
 													type="number"
 													value={multiplier}
 													onChange={(e) => setMultiplier(e.target.value)}
-													placeholder="Enter a number (1-10)"
+													placeholder="Enter a number (1-999)"
 													className="max-w-[200px]"
 													min="1"
-													max="10"
+													max="999"
 													step="0.01"
 													disabled={isSubmitting}
 												/>

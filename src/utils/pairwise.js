@@ -82,7 +82,7 @@ export function formatRepoName(repoUrl) {
  * @returns {boolean} Whether the value is valid
  *
  * Application-specific constraints:
- * 1. Must be a positive number between 1 and 10
+ * 1. Must be a positive number between 1 and 999
  * 2. Maximum 2 decimal places allowed
  * 3. Must be a valid number format
  */
@@ -93,7 +93,7 @@ export function isValidMultiplier(value) {
 	}
 
 	const num = parseFloat(value);
-	return num >= 1 && num <= 10;
+	return num >= 1 && num <= 999;
 }
 
 /**

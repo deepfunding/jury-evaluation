@@ -142,6 +142,77 @@ describe("calculateLogMultiplier", () => {
 			});
 		});
 	});
+
+	describe("extended range tests", () => {
+		test("handles large valid multipliers", () => {
+			expect(calculateLogMultiplier(1, 100)).toBeCloseTo(-4.605170185988092);
+			expect(calculateLogMultiplier(2, 100)).toBeCloseTo(4.605170185988092);
+			expect(calculateLogMultiplier(1, 500)).toBeCloseTo(-6.214608098422191);
+			expect(calculateLogMultiplier(2, 500)).toBeCloseTo(6.214608098422191);
+			expect(calculateLogMultiplier(1, 999)).toBeCloseTo(-6.906754778648554);
+			expect(calculateLogMultiplier(2, 999)).toBeCloseTo(6.906754778648554);
+		});
+
+		test("maintains precision with decimal values", () => {
+			expect(calculateLogMultiplier(1, 1.5)).toBeCloseTo(-0.4054651081081644);
+			expect(calculateLogMultiplier(2, 1.5)).toBeCloseTo(0.4054651081081644);
+			expect(calculateLogMultiplier(1, 99.5)).toBeCloseTo(-4.600158825073151);
+			expect(calculateLogMultiplier(2, 99.5)).toBeCloseTo(4.600158825073151);
+			expect(calculateLogMultiplier(1, 999.99)).toBeCloseTo(-6.907755278982137);
+			expect(calculateLogMultiplier(2, 999.99)).toBeCloseTo(6.907755278982137);
+		});
+
+		test("handles various decimal places", () => {
+			expect(calculateLogMultiplier(1, 1.23)).toBeCloseTo(-0.20701418698771725);
+			expect(calculateLogMultiplier(2, 45.67)).toBeCloseTo(3.8215461282619165);
+			expect(calculateLogMultiplier(1, 123.45)).toBeCloseTo(-4.815728376275294);
+			expect(calculateLogMultiplier(2, 567.89)).toBeCloseTo(6.342132199234153);
+		});
+	});
+
+	describe("boundary value tests", () => {
+		test("handles minimum valid values", () => {
+			expect(calculateLogMultiplier(1, 1)).toBeCloseTo(0);
+			expect(calculateLogMultiplier(2, 1)).toBeCloseTo(0);
+			expect(calculateLogMultiplier(1, 1.01)).toBeCloseTo(-0.00995033085316808);
+			expect(calculateLogMultiplier(2, 1.01)).toBeCloseTo(0.00995033085316808);
+		});
+
+		test("handles maximum valid values", () => {
+			expect(calculateLogMultiplier(1, 998)).toBeCloseTo(-6.905753321150545);
+			expect(calculateLogMultiplier(2, 998)).toBeCloseTo(6.905753321150545);
+			expect(calculateLogMultiplier(1, 999)).toBeCloseTo(-6.906754778648554);
+			expect(calculateLogMultiplier(2, 999)).toBeCloseTo(6.906754778648554);
+		});
+	});
+
+	describe("error handling", () => {
+		test("handles invalid choice values", () => {
+			expect(Number.isNaN(calculateLogMultiplier(0, 500))).toBe(true);
+			expect(Number.isNaN(calculateLogMultiplier(3, 500))).toBe(true);
+			expect(Number.isNaN(calculateLogMultiplier(-1, 500))).toBe(true);
+			expect(Number.isNaN(calculateLogMultiplier(1.5, 500))).toBe(true);
+		});
+
+		test("handles invalid multiplier values", () => {
+			expect(Number.isNaN(calculateLogMultiplier(1, 0))).toBe(true);
+			expect(Number.isNaN(calculateLogMultiplier(1, -500))).toBe(true);
+			expect(Number.isNaN(calculateLogMultiplier(1, 1000))).toBe(false);
+			expect(Number.isNaN(calculateLogMultiplier(2, "abc"))).toBe(true);
+		});
+	});
+
+	describe("symmetry tests", () => {
+		test("maintains symmetry with various values", () => {
+			const testValues = [1.5, 10, 50, 100, 500, 999];
+			testValues.forEach((value) => {
+				const choice1Result = calculateLogMultiplier(1, value);
+				const choice2Result = calculateLogMultiplier(2, value);
+				expect(choice1Result).toBeCloseTo(-choice2Result);
+				expect(Math.abs(choice1Result)).toBeCloseTo(Math.log(value));
+			});
+		});
+	});
 });
 
 describe("formatRepoName", () => {
@@ -157,22 +228,49 @@ describe("formatRepoName", () => {
 });
 
 describe("isValidMultiplier", () => {
-	test("accepts values between 1 and 10", () => {
+	test("accepts values between 1 and 999", () => {
 		expect(isValidMultiplier("1")).toBe(true);
+		expect(isValidMultiplier("1.5")).toBe(true);
 		expect(isValidMultiplier("5.5")).toBe(true);
 		expect(isValidMultiplier("10")).toBe(true);
+		expect(isValidMultiplier("100")).toBe(true);
+		expect(isValidMultiplier("500.5")).toBe(true);
+		expect(isValidMultiplier("999")).toBe(true);
 	});
 
-	test("rejects values outside 1-10 range", () => {
+	test("rejects values outside 1-999 range", () => {
 		expect(isValidMultiplier("0")).toBe(false);
-		expect(isValidMultiplier("11")).toBe(false);
+		expect(isValidMultiplier("0.5")).toBe(false);
+		expect(isValidMultiplier("1000")).toBe(false);
 		expect(isValidMultiplier("-1")).toBe(false);
+		expect(isValidMultiplier("999.1")).toBe(false);
 	});
 
-	test("rejects non-numeric values", () => {
+	test("validates decimal place restrictions", () => {
+		expect(isValidMultiplier("1.23")).toBe(true);
+		expect(isValidMultiplier("5.234")).toBe(false);
+		expect(isValidMultiplier("100.567")).toBe(false);
+		expect(isValidMultiplier("1.5")).toBe(true);
+		expect(isValidMultiplier("10.05")).toBe(true);
+		expect(isValidMultiplier("999.99")).toBe(false);
+	});
+
+	test("rejects invalid number formats", () => {
 		expect(isValidMultiplier("abc")).toBe(false);
 		expect(isValidMultiplier("")).toBe(false);
 		expect(isValidMultiplier("1.2.3")).toBe(false);
+		expect(isValidMultiplier("5,5")).toBe(false);
+		expect(isValidMultiplier("10e2")).toBe(false);
+		expect(isValidMultiplier("1/2")).toBe(false);
+		expect(isValidMultiplier(" 123 ")).toBe(false);
+	});
+
+	test("handles edge cases", () => {
+		expect(isValidMultiplier("001")).toBe(true);
+		expect(isValidMultiplier("1.")).toBe(true);
+		expect(isValidMultiplier(".5")).toBe(false);
+		expect(isValidMultiplier("1.0")).toBe(true);
+		expect(isValidMultiplier("999.00")).toBe(true);
 	});
 });
 
