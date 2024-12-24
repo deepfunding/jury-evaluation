@@ -44,7 +44,6 @@ export default function Home() {
 	const [originalRound, setOriginalRound] = useState(null);
 	const [originalIndex, setOriginalIndex] = useState(null);
 	const [roundPairs, setRoundPairs] = useState({});
-	const MAX_ROUNDS = 5;
 
 	const handleValidate = async (e) => {
 		e.preventDefault();
@@ -467,19 +466,11 @@ export default function Home() {
 							))}
 						</div>
 						<div className="flex gap-2">
-							{currentReviewRound === round && !isEditMode && (
-								<>
-									{round < MAX_ROUNDS && isCurrentRoundComplete && (
-										<div className="flex items-center gap-2">
-											<p className="text-sm text-muted-foreground">
-												Would you like to continue with the next round?
-											</p>
-											<Button onClick={handleContinue}>
-												Continue to Next Round
-											</Button>
-										</div>
-									)}
-								</>
+							{currentReviewRound === round && !isEditMode && isCurrentRoundComplete && (
+								<div className="flex items-center gap-2">
+									<p className="text-sm text-muted-foreground">Would you like to continue with the next round?</p>
+									<Button onClick={handleContinue}>Continue to Next Round</Button>
+								</div>
 							)}
 						</div>
 					</div>
