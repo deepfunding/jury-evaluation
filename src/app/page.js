@@ -14,6 +14,7 @@ import {
 import { seeds } from "@/data/seed";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
 
 export default function Home() {
 	const [inviteCode, setInviteCode] = useState("DEMO2024");
@@ -36,6 +37,14 @@ export default function Home() {
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [isAllCompleted, setIsAllCompleted] = useState(false);
 	const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+	const [round, setRound] = useState(1);
+	const [showContinueDialog, setShowContinueDialog] = useState(false);
+	const [currentReviewRound, setCurrentReviewRound] = useState(1);
+	const [isEditMode, setIsEditMode] = useState(false);
+	const [originalRound, setOriginalRound] = useState(null);
+	const [originalIndex, setOriginalIndex] = useState(null);
+	const [roundPairs, setRoundPairs] = useState({});
+	const MAX_ROUNDS = 5;
 
 	const handleValidate = async (e) => {
 		e.preventDefault();
@@ -57,24 +66,27 @@ export default function Home() {
 				headers: {
 					"Content-Type": "application/json",
 				},
-				body: JSON.stringify({
-					inviteCode,
-				}),
+				body: JSON.stringify({ inviteCode }),
 			});
 
 			const data = await response.json();
 
-			if (response.ok) {
-				setIsValidated(true);
-				setUserData((prev) => ({
-					...prev,
-					inviteCode,
-				}));
-				setPairs(generatePairs(seeds, 5));
-			} else {
+			if (!response.ok) {
 				setError(data.error || "Invalid input. Please try again.");
+				return;
 			}
+
+			const updatedUserData = {
+				...userData,
+				inviteCode,
+			};
+			setUserData(updatedUserData);
+			setIsValidated(true);
+			const initialPairs = generatePairs(seeds, 5);
+			setPairs(initialPairs);
+			setRoundPairs({ 1: initialPairs });
 		} catch (error) {
+			console.error("Validation error:", error);
 			setError("Something went wrong. Please try again.");
 		}
 	};
@@ -93,19 +105,35 @@ export default function Home() {
 	};
 
 	const handleEditComparison = (index) => {
-		setCurrentPairIndex(index);
 		const comparison = comparisons[index];
+
+		// Store original state
+		setOriginalRound(round);
+		setOriginalIndex(currentPairIndex);
+
+		// Create pairs based on the original comparison
+		const editPairs = [
+			[seeds[comparison.itemAIndex], seeds[comparison.itemBIndex]],
+		];
+
+		// Store current pairs if not already stored
+		if (!roundPairs[round]) {
+			setRoundPairs((prev) => ({ ...prev, [round]: pairs }));
+		}
+
+		setRound(comparison.round);
+		setPairs(editPairs);
+		setCurrentPairIndex(0);
 		setSelectedChoice(comparison.choice);
 		setMultiplier(comparison.multiplier.toString());
 		setReasoning(comparison.reasoning);
 		setShowReviewPanel(false);
 		setIsAllCompleted(false);
+		setIsEditMode(true);
 		setError("");
 	};
 
 	const handleNext = async () => {
-		if (showSuccessDialog) return;
-
 		if (!selectedChoice) {
 			setError("Please select a repository");
 			return;
@@ -136,11 +164,22 @@ export default function Home() {
 			multiplier: multiplierValue,
 			logMultiplier: logMultiplierValue,
 			reasoning: reasoning.trim(),
+			round: round,
 		};
 
 		try {
 			setIsSubmitting(true);
-			const existingRowNumber = comparisonRowNumbers[currentPairIndex];
+
+			// Find if there's an existing comparison for this round and index
+			const existingIndex = comparisons.findIndex(
+				(c) =>
+					c.round === round &&
+					c.itemAIndex === newComparison.itemAIndex &&
+					c.itemBIndex === newComparison.itemBIndex,
+			);
+
+			const existingRowNumber =
+				existingIndex !== -1 ? comparisonRowNumbers[existingIndex] : undefined;
 
 			const response = await fetch("/api/submit-comparison", {
 				method: "POST",
@@ -165,10 +204,12 @@ export default function Home() {
 			const newComparisons = [...comparisons];
 			const newComparisonRowNumbers = [...comparisonRowNumbers];
 
-			if (currentPairIndex < newComparisons.length) {
-				newComparisons[currentPairIndex] = newComparison;
-				newComparisonRowNumbers[currentPairIndex] = newRowNumber;
+			if (existingIndex !== -1) {
+				// Update existing comparison
+				newComparisons[existingIndex] = newComparison;
+				newComparisonRowNumbers[existingIndex] = newRowNumber;
 			} else {
+				// Add new comparison
 				newComparisons.push(newComparison);
 				newComparisonRowNumbers.push(newRowNumber);
 			}
@@ -182,40 +223,36 @@ export default function Home() {
 				setShowSuccessMessage(false);
 			}, 2000);
 
-			// If we've completed all comparisons
-			if (newComparisons.length === pairs.length) {
-				setIsAllCompleted(true);
+			if (isEditMode) {
+				// After successful edit, return to original state
+				setRound(originalRound);
+				setPairs(roundPairs[originalRound]);
+				setCurrentPairIndex(originalIndex);
+				setIsEditMode(false);
+				setOriginalRound(null);
+				setOriginalIndex(null);
+				setSelectedChoice(null);
+				setMultiplier("");
+				setReasoning("");
 				setShowReviewPanel(true);
 				return;
 			}
 
-			// Find the next unentered pair index
-			let nextIndex = currentPairIndex;
-			if (currentPairIndex < pairs.length - 1) {
-				// If we were editing a previous entry, find the next unentered pair
-				if (currentPairIndex < newComparisons.length - 1) {
-					nextIndex = newComparisons.length;
-				} else {
-					// If we were entering a new pair, just go to the next one
-					nextIndex = currentPairIndex + 1;
-				}
-
-				setCurrentPairIndex(nextIndex);
-				const nextComparison = newComparisons[nextIndex];
-				if (nextComparison) {
-					setSelectedChoice(nextComparison.choice);
-					setMultiplier(nextComparison.multiplier.toString());
-					setReasoning(nextComparison.reasoning);
-				} else {
-					setSelectedChoice(null);
-					setMultiplier("");
-					setReasoning("");
-				}
-				setError("");
-			} else {
+			// If we've completed all comparisons in this round
+			if (currentPairIndex === pairs.length - 1) {
 				setIsAllCompleted(true);
-				setShowSuccessDialog(true);
+				setShowReviewPanel(true);
+				setCurrentReviewRound(round);
+				setShowContinueDialog(true);
+				return;
 			}
+
+			// Move to next comparison
+			setCurrentPairIndex(currentPairIndex + 1);
+			setSelectedChoice(null);
+			setMultiplier("");
+			setReasoning("");
+			setError("");
 		} catch (error) {
 			console.error("Submit error:", error);
 			setError(error.message || "Failed to submit comparison");
@@ -224,112 +261,232 @@ export default function Home() {
 		}
 	};
 
-	const handleFillRandom = () => {
-		const newComparisons = [];
-		for (let i = 0; i < pairs.length; i++) {
-			const pair = pairs[i];
-			const choice = Math.random() < 0.5 ? 1 : 2;
-			const multiplierValue = (Math.random() * 9 + 1).toFixed(2); // Random number between 1 and 10
-			const logMultiplierValue =
-				choice === 2 ? Math.log(multiplierValue) : -Math.log(multiplierValue);
-
-			newComparisons.push({
-				itemAIndex: seeds.indexOf(pair[0]),
-				itemBIndex: seeds.indexOf(pair[1]),
-				itemAName: formatRepoName(pair[0]),
-				itemBName: formatRepoName(pair[1]),
-				choice,
-				multiplier: parseFloat(multiplierValue),
-				logMultiplier: logMultiplierValue,
-				reasoning: `Random test comparison ${i + 1}`,
-			});
-		}
-		setComparisons(newComparisons);
-		setIsAllCompleted(true);
+	const handleContinue = () => {
+		const newRound = round + 1;
+		const newPairs = generatePairs(seeds, 5);
+		setPairs(newPairs);
+		setRoundPairs((prev) => ({ ...prev, [newRound]: newPairs }));
+		setRound(newRound);
+		setCurrentPairIndex(0);
+		setSelectedChoice(null);
+		setMultiplier("");
+		setReasoning("");
+		setIsAllCompleted(false);
+		setShowContinueDialog(false);
 		setShowReviewPanel(false);
+		setError("");
 	};
 
-	const handleSubmit = async () => {
-		if (!userData.name.trim() || !userData.email.trim()) {
-			setError("Please enter your name and email");
-			return;
-		}
+	const handleFinish = () => {
+		setShowSuccessDialog(true);
+		setShowContinueDialog(false);
+	};
 
-		try {
-			setIsSubmitting(true);
-			const response = await fetch("/api/submit", {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-				},
-				body: JSON.stringify({
-					userData,
-					comparisons,
-				}),
-			});
+	const handleRefreshPairs = () => {
+		// Generate new pairs
+		const newPairs = generatePairs(seeds, 5);
 
-			const data = await response.json();
+		// Find existing comparisons for current round
+		const currentRoundComparisons = comparisons.filter(
+			(c) => c.round === round,
+		);
 
-			if (response.ok) {
-				setShowSuccessDialog(true);
-			} else {
-				setError(data.error || "Failed to submit comparisons");
+		// Remove existing comparisons for the current pair index if it exists
+		const updatedComparisons = comparisons.filter(
+			(c) =>
+				!(
+					c.round === round &&
+					c.itemAIndex === seeds.indexOf(pairs[currentPairIndex][0]) &&
+					c.itemBIndex === seeds.indexOf(pairs[currentPairIndex][1])
+				),
+		);
+
+		// Update pairs and state
+		setPairs(newPairs);
+		setRoundPairs((prev) => ({ ...prev, [round]: newPairs }));
+		setComparisons(updatedComparisons);
+		setSelectedChoice(null);
+		setMultiplier("");
+		setReasoning("");
+		setError("");
+	};
+
+	const ComparisonReviewPanel = () => {
+		const roundComparisons = comparisons.filter(
+			(comparison) => comparison.round === currentReviewRound,
+		);
+
+		const availableRounds = Array.from(
+			new Set(comparisons.map((comparison) => comparison.round)),
+		).sort((a, b) => a - b);
+
+		const currentRoundPairs = roundPairs[currentReviewRound] || [];
+
+		// Only show completed comparisons and the current one being worked on
+		const displayComparisons = roundComparisons
+			.map((comparison) => ({
+				...comparison,
+				index: currentRoundPairs.findIndex(
+					(pair) =>
+						seeds.indexOf(pair[0]) === comparison.itemAIndex &&
+						seeds.indexOf(pair[1]) === comparison.itemBIndex,
+				),
+			}))
+			.sort((a, b) => a.index - b.index);
+
+		// Add current incomplete comparison if in current round and not all comparisons are complete
+		if (
+			currentReviewRound === round &&
+			currentPairIndex < 5 &&
+			roundComparisons.length < 5
+		) {
+			const currentPair = currentRoundPairs[currentPairIndex];
+			if (currentPair) {
+				const existingComparison = roundComparisons.find(
+					(c) =>
+						c.itemAIndex === seeds.indexOf(currentPair[0]) &&
+						c.itemBIndex === seeds.indexOf(currentPair[1]),
+				);
+
+				if (!existingComparison) {
+					displayComparisons.push({
+						index: currentPairIndex,
+						itemAName: formatRepoName(currentPair[0]),
+						itemBName: formatRepoName(currentPair[1]),
+						isIncomplete: true,
+						id: `incomplete-${currentPairIndex}`, // Add unique key for incomplete items
+					});
+				}
 			}
-		} catch (error) {
-			console.error("Submit error:", error);
-			setError("An error occurred while submitting your comparisons");
-		} finally {
-			setIsSubmitting(false);
 		}
-	};
 
-	const ComparisonReviewPanel = () => (
-		<Card className="max-w-2xl mb-8">
-			<CardHeader>
-				<CardTitle className="flex justify-between items-center">
-					Review Your Comparisons
-					{!isAllCompleted && (
-						<Button variant="outline" onClick={() => setShowReviewPanel(false)}>
-							Close
-						</Button>
-					)}
-				</CardTitle>
-				{isAllCompleted && (
-					<p className="text-sm text-muted-foreground mt-2">
-						Please review your responses. Click 'Edit' on any comparison if you
-						want to make changes.
-					</p>
-				)}
-			</CardHeader>
-			<CardContent className="space-y-4">
-				{comparisons.map((comparison, index) => (
-					<Card key={index} className="p-4">
-						<div className="flex justify-between items-start">
-							<div>
-								<p className="font-medium">Comparison {index + 1}</p>
-								<p className="text-sm text-muted-foreground mt-1">
-									{comparison.choice === 1
-										? comparison.itemAName
-										: comparison.itemBName}{" "}
-									is deserve {comparison.multiplier}x more credit than{" "}
-									{comparison.choice === 1
-										? comparison.itemBName
-										: comparison.itemAName}
-								</p>
-								<p className="text-sm mt-2">{comparison.reasoning}</p>
-							</div>
+		const isCurrentRoundComplete = roundComparisons.length === 5;
+
+		return (
+			<Card className="max-w-2xl mb-8">
+				<CardHeader className="space-y-4">
+					<div className="space-y-2">
+						<CardTitle>Thank you for your participation!</CardTitle>
+						<p className="text-sm text-muted-foreground">
+							You can review and edit your previous responses below.
+						</p>
+					</div>
+					<div className="flex justify-between items-center">
+						<h3 className="text-lg font-medium">Round {currentReviewRound}</h3>
+						{!isAllCompleted && (
 							<Button
 								variant="outline"
-								onClick={() => handleEditComparison(index)}
+								onClick={() => setShowReviewPanel(false)}
 							>
-								Edit
+								Close
 							</Button>
+						)}
+					</div>
+					{currentReviewRound === round && (
+						<p className="text-sm text-muted-foreground">
+							{isCurrentRoundComplete
+								? "All comparisons for this round are successfully submitted."
+								: `${roundComparisons.length} of 5 comparisons completed in this round.`}
+						</p>
+					)}
+				</CardHeader>
+				<CardContent className="space-y-4">
+					{displayComparisons.map((comparison) => (
+						<Card
+							key={
+								comparison.isIncomplete
+									? comparison.id
+									: `${comparison.round}-${comparison.itemAIndex}-${comparison.itemBIndex}`
+							}
+							className="p-4"
+						>
+							<div className="flex justify-between items-start">
+								<div className="space-y-2">
+									{comparison.isIncomplete ? (
+										<p className="text-sm text-muted-foreground">
+											Currently comparing {comparison.itemAName} with{" "}
+											{comparison.itemBName}
+										</p>
+									) : (
+										<>
+											<p className="text-sm text-muted-foreground">
+												{comparison.choice === 1
+													? comparison.itemAName
+													: comparison.itemBName}{" "}
+												is deserve {comparison.multiplier}x more credit than{" "}
+												{comparison.choice === 1
+													? comparison.itemBName
+													: comparison.itemAName}
+											</p>
+											<p className="text-sm">{comparison.reasoning}</p>
+										</>
+									)}
+								</div>
+								{!comparison.isIncomplete && (
+									<Button
+										variant="outline"
+										onClick={() =>
+											handleEditComparison(
+												comparisons.findIndex(
+													(c) =>
+														c.round === currentReviewRound &&
+														c.itemAIndex === comparison.itemAIndex &&
+														c.itemBIndex === comparison.itemBIndex,
+												),
+											)
+										}
+									>
+										Edit
+									</Button>
+								)}
+								{comparison.isIncomplete && (
+									<Button
+										onClick={() => {
+											setShowReviewPanel(false);
+											setCurrentPairIndex(comparison.index);
+										}}
+									>
+										Continue
+									</Button>
+								)}
+							</div>
+						</Card>
+					))}
+
+					<div className="flex justify-between items-center mt-6">
+						<div className="flex gap-2">
+							{availableRounds.map((r) => (
+								<Button
+									key={r}
+									variant={currentReviewRound === r ? "default" : "outline"}
+									onClick={() => setCurrentReviewRound(r)}
+									className="w-10 h-10 p-0"
+								>
+									{r}
+								</Button>
+							))}
 						</div>
-					</Card>
-				))}
-			</CardContent>
-		</Card>
-	);
+						<div className="flex gap-2">
+							{currentReviewRound === round && !isEditMode && (
+								<>
+									{round < MAX_ROUNDS && isCurrentRoundComplete && (
+										<div className="flex items-center gap-2">
+											<p className="text-sm text-muted-foreground">
+												Would you like to continue with the next round?
+											</p>
+											<Button onClick={handleContinue}>
+												Continue to Next Round
+											</Button>
+										</div>
+									)}
+								</>
+							)}
+						</div>
+					</div>
+				</CardContent>
+			</Card>
+		);
+	};
 
 	return (
 		<div className="container mx-auto p-8">
@@ -408,154 +565,17 @@ export default function Home() {
 						</Alert>
 					)}
 				</div>
-			) : isAllCompleted ? (
-				<div className="space-y-8">
-					<Card className="max-w-2xl mx-auto">
-						<CardHeader>
-							<CardTitle className="text-center text-2xl">
-								Thank You for Your Response!
-							</CardTitle>
-							<p className="text-center text-muted-foreground mt-4">
-								Your comparisons have been saved successfully. You can review
-								and modify your responses below if needed.
-							</p>
-						</CardHeader>
-					</Card>
-					<ComparisonReviewPanel />
-				</div>
-			) : (
-				<div>
-					<div className="flex justify-between items-center mb-4">
-						<h2 className="text-lg font-semibold text-muted-foreground">
-							Compare Repositories
-						</h2>
-						<Button
-							variant="outline"
-							onClick={() => setShowReviewPanel(!showReviewPanel)}
-						>
-							{showReviewPanel ? "Hide Review" : "Show Review"}
-						</Button>
-					</div>
-
-					{showReviewPanel && <ComparisonReviewPanel />}
-
-					<Card className="max-w-2xl">
-						<CardHeader>
-							<CardTitle className="flex justify-between items-center">
-								Comparison {currentPairIndex + 1} of {pairs.length}
-							</CardTitle>
-						</CardHeader>
-						<CardContent className="space-y-6">
-							<div className="space-y-6">
-								<div className="space-y-4">
-									<p className="text-lg text-center">
-										Which repository deserves more credit for Ethereum?
-									</p>
-									<div className="flex justify-center gap-4">
-										<Button
-											variant={selectedChoice === 1 ? "default" : "outline"}
-											onClick={() => handleChoiceSelect(1)}
-											className="flex-1 max-w-xs"
-											disabled={isSubmitting}
-										>
-											{formatRepoName(pairs[currentPairIndex][0])}
-										</Button>
-										<Button
-											variant={selectedChoice === 2 ? "default" : "outline"}
-											onClick={() => handleChoiceSelect(2)}
-											className="flex-1 max-w-xs"
-											disabled={isSubmitting}
-										>
-											{formatRepoName(pairs[currentPairIndex][1])}
-										</Button>
-									</div>
-								</div>
-
-								<div className="space-y-4">
-									<div className="space-y-2">
-										<Label>Credit Multiplier</Label>
-										<p className="text-sm text-muted-foreground">
-											Enter how many times more credit the repository you choose
-											deserves (1-10)
-										</p>
-										<div className="flex gap-4 items-center">
-											<Input
-												type="number"
-												value={multiplier}
-												onChange={(e) => setMultiplier(e.target.value)}
-												placeholder="Enter a number (1-10)"
-												className="max-w-[200px]"
-												min="1"
-												max="10"
-												step="0.01"
-												disabled={isSubmitting}
-											/>
-										</div>
-									</div>
-
-									<div className="space-y-2">
-										<Label htmlFor="reasoning">Reasoning</Label>
-										<p className="text-sm text-muted-foreground">
-											Please explain your choice and the multiplier value (~200
-											words)
-										</p>
-										<Textarea
-											id="reasoning"
-											value={reasoning}
-											onChange={(e) => setReasoning(e.target.value)}
-											placeholder="Explain why you chose this repository and the multiplier value..."
-											className="h-32"
-											disabled={isSubmitting}
-										/>
-									</div>
-
-									<div className="flex flex-col items-center">
-										<Button
-											onClick={handleNext}
-											disabled={isSubmitting}
-											className="mb-2"
-										>
-											{isSubmitting ? (
-												<>
-													<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-													<span>Submitting...</span>
-												</>
-											) : currentPairIndex < pairs.length - 1 ? (
-												"Next"
-											) : (
-												"Complete"
-											)}
-										</Button>
-										{showSuccessMessage && (
-											<span className="text-sm text-green-600">
-												Previous response recorded successfully
-											</span>
-										)}
-									</div>
-								</div>
-							</div>
-
-							{error && (
-								<Alert variant="destructive">
-									<AlertDescription>{error}</AlertDescription>
-								</Alert>
-							)}
-						</CardContent>
-					</Card>
-				</div>
-			)}
-
-			{showSuccessDialog && (
-				<Card className="max-w-2xl mx-auto mt-8">
+			) : showSuccessDialog ? (
+				<Card className="max-w-2xl mx-auto">
 					<CardHeader>
 						<CardTitle>Thank You!</CardTitle>
 					</CardHeader>
 					<CardContent className="space-y-4">
 						<div className="text-center">
-							<p>Your comparisons have been submitted successfully.</p>
+							<p>You have completed {round} rounds of comparisons.</p>
+							<p>Total comparisons made: {comparisons.length}</p>
 							<p className="text-sm text-muted-foreground mt-2">
-								This invite code has been marked as used and cannot be used
-								again.
+								Thank you for your valuable contribution!
 							</p>
 						</div>
 						<div className="flex justify-center mt-4">
@@ -563,6 +583,166 @@ export default function Home() {
 						</div>
 					</CardContent>
 				</Card>
+			) : (
+				<div>
+					<div className="flex flex-col gap-4 mb-4">
+						<div className="flex justify-between items-center">
+							<h2 className="text-lg font-semibold text-muted-foreground">
+								Round {round} - Compare Dependencies
+							</h2>
+							<Button
+								variant="outline"
+								onClick={() => {
+									setShowReviewPanel(!showReviewPanel);
+									setCurrentReviewRound(round);
+								}}
+							>
+								{showReviewPanel ? "Hide Review" : "Show Review"}
+							</Button>
+						</div>
+						<p className="text-sm text-muted-foreground">
+							You have completed{" "}
+							<span className="font-bold">{comparisons.length}</span> comparison
+							{comparisons.length !== 1 ? "s" : ""} so far.
+							{round >= 2 && (
+								<>
+									<br />
+									You can stop here if you want. You can always review and edit
+									your previous responses using the review button.
+								</>
+							)}
+						</p>
+					</div>
+
+					{showReviewPanel ? (
+						<ComparisonReviewPanel />
+					) : (
+						<Card className="max-w-2xl">
+							<CardHeader>
+								<CardTitle className="flex justify-between items-center">
+									<span>
+										{isEditMode
+											? `Editing Round ${round} - Comparison ${
+													comparisons.findIndex(
+														(c) =>
+															c.round === round &&
+															c.itemAIndex === seeds.indexOf(pairs[0][0]) &&
+															c.itemBIndex === seeds.indexOf(pairs[0][1]),
+													) + 1
+												} of 5`
+											: `Comparison ${(currentPairIndex % 5) + 1} of 5`}
+									</span>
+									{!isEditMode && (
+										<Button
+											variant="secondary"
+											size="sm"
+											onClick={handleRefreshPairs}
+											disabled={isSubmitting}
+											className="bg-gray-100 hover:bg-gray-200"
+										>
+											<RefreshCw className="h-4 w-4 mr-2" />
+											Refresh Pairs
+										</Button>
+									)}
+								</CardTitle>
+							</CardHeader>
+							<CardContent className="space-y-6">
+								<div className="space-y-6">
+									<div className="space-y-4">
+										<p className="text-lg text-center">
+											Which dependency has been more valuable to the success of
+											Ethereum?
+										</p>
+										<div className="flex justify-center gap-4">
+											<Button
+												variant={selectedChoice === 1 ? "default" : "outline"}
+												onClick={() => handleChoiceSelect(1)}
+												className="flex-1 max-w-xs"
+												disabled={isSubmitting}
+											>
+												{formatRepoName(pairs[currentPairIndex][0])}
+											</Button>
+											<Button
+												variant={selectedChoice === 2 ? "default" : "outline"}
+												onClick={() => handleChoiceSelect(2)}
+												className="flex-1 max-w-xs"
+												disabled={isSubmitting}
+											>
+												{formatRepoName(pairs[currentPairIndex][1])}
+											</Button>
+										</div>
+									</div>
+
+									<div className="space-y-4">
+										<div className="space-y-2">
+											<Label>Credit Multiplier</Label>
+											<p className="text-sm text-muted-foreground">
+												Enter how many times more credit the dependency you
+												choose deserves (1-10)
+											</p>
+											<div className="flex gap-4 items-center">
+												<Input
+													type="number"
+													value={multiplier}
+													onChange={(e) => setMultiplier(e.target.value)}
+													placeholder="Enter a number (1-10)"
+													className="max-w-[200px]"
+													min="1"
+													max="10"
+													step="0.01"
+													disabled={isSubmitting}
+												/>
+											</div>
+										</div>
+
+										<div className="space-y-2">
+											<Label htmlFor="reasoning">Reasoning</Label>
+											<p className="text-sm text-muted-foreground">
+												Please explain your choice and the multiplier value
+												(~200 words)
+											</p>
+											<Textarea
+												id="reasoning"
+												value={reasoning}
+												onChange={(e) => setReasoning(e.target.value)}
+												className="h-32"
+												disabled={isSubmitting}
+											/>
+										</div>
+
+										<div className="flex flex-col items-center">
+											<Button
+												onClick={handleNext}
+												disabled={isSubmitting}
+												className="mb-2"
+											>
+												{isSubmitting ? (
+													<>
+														<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+														<span>Submitting...</span>
+													</>
+												) : (
+													"Next"
+												)}
+											</Button>
+											{showSuccessMessage && (
+												<span className="text-sm text-green-600">
+													Previous response recorded successfully
+												</span>
+											)}
+										</div>
+									</div>
+								</div>
+
+								{error && (
+									<Alert variant="destructive">
+										<AlertDescription>{error}</AlertDescription>
+									</Alert>
+								)}
+							</CardContent>
+						</Card>
+					)}
+				</div>
 			)}
 		</div>
 	);
