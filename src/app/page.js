@@ -15,6 +15,13 @@ import { seeds } from "@/data/seed";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2 } from "lucide-react";
 import { ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
+import {
+	Dialog,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+	DialogDescription,
+} from "@/components/ui/dialog";
 
 export default function Home() {
 	const [inviteCode, setInviteCode] = useState("");
@@ -44,6 +51,8 @@ export default function Home() {
 	const [originalRound, setOriginalRound] = useState(null);
 	const [originalIndex, setOriginalIndex] = useState(null);
 	const [roundPairs, setRoundPairs] = useState({});
+	const [showSaveDialog, setShowSaveDialog] = useState(false);
+	const [isSaved, setIsSaved] = useState(false);
 
 	const handleValidate = async (e) => {
 		e.preventDefault();
@@ -239,10 +248,8 @@ export default function Home() {
 
 			// If we've completed all comparisons in this round
 			if (currentPairIndex === pairs.length - 1) {
-				setIsAllCompleted(true);
 				setShowReviewPanel(true);
 				setCurrentReviewRound(round);
-				setShowContinueDialog(true);
 				return;
 			}
 
@@ -310,6 +317,11 @@ export default function Home() {
 		setError("");
 	};
 
+	const handleSaveResult = () => {
+		setShowSaveDialog(true);
+		setIsSaved(true);
+	};
+
 	const ComparisonReviewPanel = () => {
 		const roundComparisons = comparisons.filter(
 			(comparison) => comparison.round === currentReviewRound,
@@ -320,6 +332,7 @@ export default function Home() {
 		).sort((a, b) => a - b);
 
 		const currentRoundPairs = roundPairs[currentReviewRound] || [];
+		const isCurrentRoundComplete = roundComparisons.length === 5;
 
 		// Only show completed comparisons and the current one being worked on
 		const displayComparisons = roundComparisons
@@ -337,7 +350,7 @@ export default function Home() {
 		if (
 			currentReviewRound === round &&
 			currentPairIndex < 5 &&
-			roundComparisons.length < 5
+			!isCurrentRoundComplete
 		) {
 			const currentPair = currentRoundPairs[currentPairIndex];
 			if (currentPair) {
@@ -353,13 +366,11 @@ export default function Home() {
 						itemAName: formatRepoName(currentPair[0]),
 						itemBName: formatRepoName(currentPair[1]),
 						isIncomplete: true,
-						id: `incomplete-${currentPairIndex}`, // Add unique key for incomplete items
+						id: `incomplete-${currentPairIndex}`,
 					});
 				}
 			}
 		}
-
-		const isCurrentRoundComplete = roundComparisons.length === 5;
 
 		return (
 			<Card className="max-w-2xl mb-8">
@@ -412,7 +423,7 @@ export default function Home() {
 												{comparison.choice === 1
 													? comparison.itemAName
 													: comparison.itemBName}{" "}
-												is deserve {comparison.multiplier}x more credit than{" "}
+												is deserves {comparison.multiplier}x more credit than{" "}
 												{comparison.choice === 1
 													? comparison.itemBName
 													: comparison.itemAName}
@@ -452,8 +463,8 @@ export default function Home() {
 						</Card>
 					))}
 
-					<div className="flex justify-between items-center mt-6">
-						<div className="flex gap-2">
+					<div className="space-y-6 mt-8 pt-4 border-t">
+						<div className="flex justify-center gap-2">
 							{availableRounds.map((r) => (
 								<Button
 									key={r}
@@ -465,16 +476,24 @@ export default function Home() {
 								</Button>
 							))}
 						</div>
-						<div className="flex gap-2">
+						<div className="flex justify-end items-center gap-4">
 							{currentReviewRound === round &&
 								!isEditMode &&
-								isCurrentRoundComplete && (
-									<div className="flex items-center gap-2">
-										<p className="text-sm text-muted-foreground">
-											Would you like to continue with the next round?
-										</p>
-										<Button onClick={handleContinue}>
-											Continue to Next Round
+								isCurrentRoundComplete &&
+								!isSaved && (
+									<div className="flex items-center gap-4">
+										<Button
+											variant="outline"
+											onClick={handleSaveResult}
+											className="px-8"
+										>
+											Save Responses
+										</Button>
+										<Button
+											onClick={handleContinue}
+											className="px-8 bg-green-600 hover:bg-green-700"
+										>
+											Continue Evaluation
 										</Button>
 									</div>
 								)}
@@ -598,14 +617,14 @@ export default function Home() {
 							</Button>
 						</div>
 						<p className="text-sm text-muted-foreground">
-							You have completed{" "}
-							<span className="font-bold">{comparisons.length}</span> comparison
-							{comparisons.length !== 1 ? "s" : ""} so far.
+							{`You've completed ${comparisons.length} ${
+								comparisons.length === 1 ? "comparison" : "comparisons"
+							}. All responses are automatically saved.`}
 							{round >= 2 && (
 								<>
 									<br />
-									You can stop here if you want. You can always review and edit
-									your previous responses using the review button.
+									You can finish now or continue with more comparisons. Use the
+									review button to check or edit your previous responses.
 								</>
 							)}
 						</p>
@@ -675,7 +694,7 @@ export default function Home() {
 											<Label>Credit Multiplier</Label>
 											<p className="text-sm text-muted-foreground">
 												Enter how many times more credit the dependency you
-												choose deserves (1-10)
+												choose deserves (1-999)
 											</p>
 											<div className="flex gap-4 items-center">
 												<Input
@@ -741,6 +760,37 @@ export default function Home() {
 					)}
 				</div>
 			)}
+
+			<Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+				<DialogContent className="sm:max-w-md">
+					<DialogHeader>
+						<DialogTitle className="text-xl">
+							Results Saved Successfully
+						</DialogTitle>
+					</DialogHeader>
+					<div className="space-y-3 pt-4">
+						<div className="text-sm">
+							Your responses have been saved successfully.
+						</div>
+						<div className="text-sm text-muted-foreground">
+							You can continue evaluating more pairs or review and edit your
+							previous responses anytime.
+						</div>
+					</div>
+					<div className="flex justify-end pt-4">
+						<Button
+							variant="outline"
+							onClick={() => {
+								setShowSaveDialog(false);
+								setIsSaved(false);
+							}}
+							className="px-8"
+						>
+							Close
+						</Button>
+					</div>
+				</DialogContent>
+			</Dialog>
 		</div>
 	);
 }
