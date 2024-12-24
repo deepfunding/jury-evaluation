@@ -7,12 +7,6 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Label } from "@/components/ui/label";
 import {
-	Dialog,
-	DialogContent,
-	DialogHeader,
-	DialogTitle,
-} from "@/components/ui/dialog";
-import {
 	generatePairs,
 	formatRepoName,
 	isValidMultiplier,
@@ -30,6 +24,7 @@ export default function Home() {
 	const [selectedChoice, setSelectedChoice] = useState(null);
 	const [multiplier, setMultiplier] = useState("");
 	const [comparisons, setComparisons] = useState([]);
+	const [comparisonRowNumbers, setComparisonRowNumbers] = useState([]);
 	const [showSuccessDialog, setShowSuccessDialog] = useState(false);
 	const [showReviewPanel, setShowReviewPanel] = useState(false);
 	const [userData, setUserData] = useState({
@@ -40,7 +35,7 @@ export default function Home() {
 	const [reasoning, setReasoning] = useState("");
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [isAllCompleted, setIsAllCompleted] = useState(false);
-	const [isSubmitted, setIsSubmitted] = useState(false);
+	const [showSuccessMessage, setShowSuccessMessage] = useState(false);
 
 	const handleValidate = async (e) => {
 		e.preventDefault();
@@ -48,6 +43,11 @@ export default function Home() {
 
 		if (!inviteCode.trim()) {
 			setError("Please enter an invite code");
+			return;
+		}
+
+		if (!userData.name.trim() || !userData.email.trim()) {
+			setError("Please enter your name and email");
 			return;
 		}
 
@@ -70,7 +70,7 @@ export default function Home() {
 					...prev,
 					inviteCode,
 				}));
-				setPairs(generatePairs(seeds, 30));
+				setPairs(generatePairs(seeds, 5));
 			} else {
 				setError(data.error || "Invalid input. Please try again.");
 			}
@@ -103,8 +103,13 @@ export default function Home() {
 		setError("");
 	};
 
-	const handleNext = () => {
+	const handleNext = async () => {
 		if (showSuccessDialog) return;
+
+		if (!selectedChoice) {
+			setError("Please select a repository");
+			return;
+		}
 
 		if (!isValidMultiplier(multiplier)) {
 			setError("Please enter a valid multiplier between 1 and 10");
@@ -133,36 +138,89 @@ export default function Home() {
 			reasoning: reasoning.trim(),
 		};
 
-		const newComparisons = [...comparisons];
-		if (currentPairIndex < newComparisons.length) {
-			newComparisons[currentPairIndex] = newComparison;
-		} else {
-			newComparisons.push(newComparison);
-		}
-		setComparisons(newComparisons);
+		try {
+			setIsSubmitting(true);
+			const existingRowNumber = comparisonRowNumbers[currentPairIndex];
 
-		// If we've completed all comparisons
-		if (newComparisons.length === pairs.length) {
-			setIsAllCompleted(true);
-			return;
-		}
+			const response = await fetch("/api/submit-comparison", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({
+					userData,
+					comparison: newComparison,
+					existingRowNumber,
+				}),
+			});
 
-		// Find the next index
-		if (currentPairIndex < pairs.length - 1) {
-			setCurrentPairIndex(currentPairIndex + 1);
-			const nextComparison = newComparisons[currentPairIndex + 1];
-			if (nextComparison) {
-				setSelectedChoice(nextComparison.choice);
-				setMultiplier(nextComparison.multiplier.toString());
-				setReasoning(nextComparison.reasoning);
-			} else {
-				setSelectedChoice(null);
-				setMultiplier("");
-				setReasoning("");
+			if (!response.ok) {
+				const data = await response.json();
+				throw new Error(data.error || "Failed to submit comparison");
 			}
-			setError("");
-		} else {
-			setIsAllCompleted(true);
+
+			const responseData = await response.json();
+			const newRowNumber = responseData.rowNumber;
+
+			const newComparisons = [...comparisons];
+			const newComparisonRowNumbers = [...comparisonRowNumbers];
+
+			if (currentPairIndex < newComparisons.length) {
+				newComparisons[currentPairIndex] = newComparison;
+				newComparisonRowNumbers[currentPairIndex] = newRowNumber;
+			} else {
+				newComparisons.push(newComparison);
+				newComparisonRowNumbers.push(newRowNumber);
+			}
+
+			setComparisons(newComparisons);
+			setComparisonRowNumbers(newComparisonRowNumbers);
+
+			// Show success message temporarily
+			setShowSuccessMessage(true);
+			setTimeout(() => {
+				setShowSuccessMessage(false);
+			}, 2000);
+
+			// If we've completed all comparisons
+			if (newComparisons.length === pairs.length) {
+				setIsAllCompleted(true);
+				setShowReviewPanel(true);
+				return;
+			}
+
+			// Find the next unentered pair index
+			let nextIndex = currentPairIndex;
+			if (currentPairIndex < pairs.length - 1) {
+				// If we were editing a previous entry, find the next unentered pair
+				if (currentPairIndex < newComparisons.length - 1) {
+					nextIndex = newComparisons.length;
+				} else {
+					// If we were entering a new pair, just go to the next one
+					nextIndex = currentPairIndex + 1;
+				}
+
+				setCurrentPairIndex(nextIndex);
+				const nextComparison = newComparisons[nextIndex];
+				if (nextComparison) {
+					setSelectedChoice(nextComparison.choice);
+					setMultiplier(nextComparison.multiplier.toString());
+					setReasoning(nextComparison.reasoning);
+				} else {
+					setSelectedChoice(null);
+					setMultiplier("");
+					setReasoning("");
+				}
+				setError("");
+			} else {
+				setIsAllCompleted(true);
+				setShowSuccessDialog(true);
+			}
+		} catch (error) {
+			console.error("Submit error:", error);
+			setError(error.message || "Failed to submit comparison");
+		} finally {
+			setIsSubmitting(false);
 		}
 	};
 
@@ -213,7 +271,6 @@ export default function Home() {
 			const data = await response.json();
 
 			if (response.ok) {
-				setIsSubmitted(true);
 				setShowSuccessDialog(true);
 			} else {
 				setError(data.error || "Failed to submit comparisons");
@@ -231,25 +288,18 @@ export default function Home() {
 			<CardHeader>
 				<CardTitle className="flex justify-between items-center">
 					Review Your Comparisons
-					<div className="flex gap-2">
-						{(
-							<Button
-								variant="outline"
-								onClick={handleFillRandom}
-								disabled={isSubmitted}
-							>
-								Fill Random (Dev)
-							</Button>
-						)}
-						<Button
-							variant="outline"
-							onClick={() => setShowReviewPanel(false)}
-							disabled={isSubmitted}
-						>
+					{!isAllCompleted && (
+						<Button variant="outline" onClick={() => setShowReviewPanel(false)}>
 							Close
 						</Button>
-					</div>
+					)}
 				</CardTitle>
+				{isAllCompleted && (
+					<p className="text-sm text-muted-foreground mt-2">
+						Please review your responses. Click 'Edit' on any comparison if you
+						want to make changes.
+					</p>
+				)}
 			</CardHeader>
 			<CardContent className="space-y-4">
 				{comparisons.map((comparison, index) => (
@@ -261,7 +311,7 @@ export default function Home() {
 									{comparison.choice === 1
 										? comparison.itemAName
 										: comparison.itemBName}{" "}
-									is {comparison.multiplier}x better than{" "}
+									is deserve {comparison.multiplier}x more credit than{" "}
 									{comparison.choice === 1
 										? comparison.itemBName
 										: comparison.itemAName}
@@ -271,7 +321,6 @@ export default function Home() {
 							<Button
 								variant="outline"
 								onClick={() => handleEditComparison(index)}
-								disabled={isSubmitted}
 							>
 								Edit
 							</Button>
@@ -287,9 +336,32 @@ export default function Home() {
 			{!isValidated ? (
 				<div className="mb-8">
 					<h2 className="text-lg font-semibold mb-4 text-muted-foreground">
-						Enter your invite code to start
+						Enter your information to start
 					</h2>
 					<form onSubmit={handleValidate} className="space-y-4 max-w-md">
+						<div className="space-y-2">
+							<Label htmlFor="name">Name</Label>
+							<Input
+								id="name"
+								name="name"
+								value={userData.name}
+								onChange={handleUserDataChange}
+								placeholder="Enter your name"
+								required
+							/>
+						</div>
+						<div className="space-y-2">
+							<Label htmlFor="email">Email</Label>
+							<Input
+								id="email"
+								name="email"
+								type="email"
+								value={userData.email}
+								onChange={handleUserDataChange}
+								placeholder="Enter your email"
+								required
+							/>
+						</div>
 						<div className="space-y-2">
 							<Label htmlFor="inviteCode">Invite Code</Label>
 							<div className="flex gap-4">
@@ -301,7 +373,16 @@ export default function Home() {
 									placeholder="DEMO2024"
 									required
 								/>
-								<Button type="submit">Start</Button>
+								<Button type="submit" disabled={isSubmitting}>
+									{isSubmitting ? (
+										<>
+											<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+											<span>Validating...</span>
+										</>
+									) : (
+										"Start"
+									)}
+								</Button>
 							</div>
 						</div>
 					</form>
@@ -329,64 +410,18 @@ export default function Home() {
 				</div>
 			) : isAllCompleted ? (
 				<div className="space-y-8">
-					<h2 className="text-lg font-semibold mb-4 text-muted-foreground">
-						Review and Submit
-					</h2>
-					<div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-						<ComparisonReviewPanel />
-						<div className="lg:sticky lg:top-8">
-							<Card className="max-w-2xl">
-								<CardHeader>
-									<CardTitle>Enter Your Information</CardTitle>
-								</CardHeader>
-								<CardContent className="space-y-4">
-									<div className="space-y-2">
-										<Label htmlFor="name">Name</Label>
-										<Input
-											id="name"
-											name="name"
-											value={userData.name}
-											onChange={handleUserDataChange}
-											placeholder="Enter your name"
-											required
-										/>
-									</div>
-									<div className="space-y-2">
-										<Label htmlFor="email">Email</Label>
-										<Input
-											id="email"
-											name="email"
-											type="email"
-											value={userData.email}
-											onChange={handleUserDataChange}
-											placeholder="Enter your email"
-											required
-										/>
-									</div>
-									{error && (
-										<Alert variant="destructive">
-											<AlertDescription>{error}</AlertDescription>
-										</Alert>
-									)}
-									<div className="flex justify-center mt-4">
-										<Button
-											onClick={handleSubmit}
-											disabled={isSubmitting || isSubmitted}
-										>
-											{isSubmitting ? (
-												<>
-													<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-													<span>Submitting...</span>
-												</>
-											) : (
-												"Submit"
-											)}
-										</Button>
-									</div>
-								</CardContent>
-							</Card>
-						</div>
-					</div>
+					<Card className="max-w-2xl mx-auto">
+						<CardHeader>
+							<CardTitle className="text-center text-2xl">
+								Thank You for Your Response!
+							</CardTitle>
+							<p className="text-center text-muted-foreground mt-4">
+								Your comparisons have been saved successfully. You can review
+								and modify your responses below if needed.
+							</p>
+						</CardHeader>
+					</Card>
+					<ComparisonReviewPanel />
 				</div>
 			) : (
 				<div>
@@ -397,7 +432,6 @@ export default function Home() {
 						<Button
 							variant="outline"
 							onClick={() => setShowReviewPanel(!showReviewPanel)}
-							disabled={isSubmitted}
 						>
 							{showReviewPanel ? "Hide Review" : "Show Review"}
 						</Button>
@@ -407,81 +441,99 @@ export default function Home() {
 
 					<Card className="max-w-2xl">
 						<CardHeader>
-							<CardTitle>
+							<CardTitle className="flex justify-between items-center">
 								Comparison {currentPairIndex + 1} of {pairs.length}
 							</CardTitle>
 						</CardHeader>
 						<CardContent className="space-y-6">
-							<div className="text-center space-y-4">
-								<p className="text-lg">
-									Which repository deserves more credit?
-								</p>
-								<div className="flex justify-center gap-4">
-									<Button
-										variant={selectedChoice === 1 ? "default" : "outline"}
-										onClick={() => handleChoiceSelect(1)}
-										className="flex-1 max-w-xs"
-										disabled={isSubmitted}
-									>
-										{formatRepoName(pairs[currentPairIndex][0])}
-									</Button>
-									<Button
-										variant={selectedChoice === 2 ? "default" : "outline"}
-										onClick={() => handleChoiceSelect(2)}
-										className="flex-1 max-w-xs"
-										disabled={isSubmitted}
-									>
-										{formatRepoName(pairs[currentPairIndex][1])}
-									</Button>
-								</div>
-							</div>
-
-							{selectedChoice && (
+							<div className="space-y-6">
 								<div className="space-y-4">
-									<p className="text-center">
-										How many times more credit does{" "}
-										<span className="font-semibold">
-											{selectedChoice === 1
-												? formatRepoName(pairs[currentPairIndex][0])
-												: formatRepoName(pairs[currentPairIndex][1])}
-										</span>{" "}
-										deserve?
+									<p className="text-lg text-center">
+										Which repository deserves more credit for Ethereum?
 									</p>
-									<div className="flex gap-4 items-center justify-center">
-										<Input
-											type="number"
-											value={multiplier}
-											onChange={(e) => setMultiplier(e.target.value)}
-											placeholder="Enter a number (1-10)"
-											className="max-w-[200px]"
-											min="1"
-											max="10"
-											step="0.01"
-											disabled={isSubmitted}
-										/>
+									<div className="flex justify-center gap-4">
+										<Button
+											variant={selectedChoice === 1 ? "default" : "outline"}
+											onClick={() => handleChoiceSelect(1)}
+											className="flex-1 max-w-xs"
+											disabled={isSubmitting}
+										>
+											{formatRepoName(pairs[currentPairIndex][0])}
+										</Button>
+										<Button
+											variant={selectedChoice === 2 ? "default" : "outline"}
+											onClick={() => handleChoiceSelect(2)}
+											className="flex-1 max-w-xs"
+											disabled={isSubmitting}
+										>
+											{formatRepoName(pairs[currentPairIndex][1])}
+										</Button>
 									</div>
+								</div>
+
+								<div className="space-y-4">
 									<div className="space-y-2">
-										<Label htmlFor="reasoning">
-											Please explain your reasoning (~200 words)
-										</Label>
+										<Label>Credit Multiplier</Label>
+										<p className="text-sm text-muted-foreground">
+											Enter how many times more credit the repository you choose
+											deserves (1-10)
+										</p>
+										<div className="flex gap-4 items-center">
+											<Input
+												type="number"
+												value={multiplier}
+												onChange={(e) => setMultiplier(e.target.value)}
+												placeholder="Enter a number (1-10)"
+												className="max-w-[200px]"
+												min="1"
+												max="10"
+												step="0.01"
+												disabled={isSubmitting}
+											/>
+										</div>
+									</div>
+
+									<div className="space-y-2">
+										<Label htmlFor="reasoning">Reasoning</Label>
+										<p className="text-sm text-muted-foreground">
+											Please explain your choice and the multiplier value (~200
+											words)
+										</p>
 										<Textarea
 											id="reasoning"
 											value={reasoning}
 											onChange={(e) => setReasoning(e.target.value)}
 											placeholder="Explain why you chose this repository and the multiplier value..."
 											className="h-32"
-											disabled={isSubmitted}
+											disabled={isSubmitting}
 										/>
 									</div>
-									<div className="flex justify-center">
-										<Button onClick={handleNext} disabled={isSubmitted}>
-											{currentPairIndex < pairs.length - 1
-												? "Next"
-												: "Review & Submit"}
+
+									<div className="flex flex-col items-center">
+										<Button
+											onClick={handleNext}
+											disabled={isSubmitting}
+											className="mb-2"
+										>
+											{isSubmitting ? (
+												<>
+													<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+													<span>Submitting...</span>
+												</>
+											) : currentPairIndex < pairs.length - 1 ? (
+												"Next"
+											) : (
+												"Complete"
+											)}
 										</Button>
+										{showSuccessMessage && (
+											<span className="text-sm text-green-600">
+												Previous response recorded successfully
+											</span>
+										)}
 									</div>
 								</div>
-							)}
+							</div>
 
 							{error && (
 								<Alert variant="destructive">
@@ -493,12 +545,12 @@ export default function Home() {
 				</div>
 			)}
 
-			<Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
-				<DialogContent>
-					<DialogHeader>
-						<DialogTitle>Thank You!</DialogTitle>
-					</DialogHeader>
-					<div className="space-y-4">
+			{showSuccessDialog && (
+				<Card className="max-w-2xl mx-auto mt-8">
+					<CardHeader>
+						<CardTitle>Thank You!</CardTitle>
+					</CardHeader>
+					<CardContent className="space-y-4">
 						<div className="text-center">
 							<p>Your comparisons have been submitted successfully.</p>
 							<p className="text-sm text-muted-foreground mt-2">
@@ -507,11 +559,11 @@ export default function Home() {
 							</p>
 						</div>
 						<div className="flex justify-center mt-4">
-							<Button onClick={() => setShowSuccessDialog(false)}>Close</Button>
+							<Button onClick={() => window.close()}>Close</Button>
 						</div>
-					</div>
-				</DialogContent>
-			</Dialog>
+					</CardContent>
+				</Card>
+			)}
 		</div>
 	);
 }

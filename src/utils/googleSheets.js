@@ -196,7 +196,7 @@ export class GoogleSheetsService {
 		}
 	}
 
-	async submitAllComparisons(userData, comparisons) {
+	async submitComparison(userData, comparison, existingRowNumber = null) {
 		try {
 			const accessToken = await getAccessToken();
 
@@ -206,8 +206,8 @@ export class GoogleSheetsService {
 				throw new Error(codeCheck.message);
 			}
 
-			// Prepare all rows data
-			const rows = comparisons.map((comparison) => [
+			// Prepare row data
+			const row = [
 				new Date().toISOString(), // timestamp
 				userData.name, // name
 				userData.email, // email
@@ -220,33 +220,63 @@ export class GoogleSheetsService {
 				comparison.multiplier, // multiplier
 				comparison.logMultiplier, // logMultiplier
 				comparison.reasoning, // reasoning
-			]);
+			];
 
-			// Submit all rows in a single request
-			const response = await fetch(
-				`https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEET_ID}/values/responses:append?valueInputOption=RAW`,
-				{
-					method: "POST",
-					headers: {
-						Authorization: `Bearer ${accessToken}`,
-						"Content-Type": "application/json",
+			let response;
+			if (existingRowNumber) {
+				// Update existing row
+				response = await fetch(
+					`https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEET_ID}/values/responses!A${existingRowNumber}:L${existingRowNumber}?valueInputOption=RAW`,
+					{
+						method: "PUT",
+						headers: {
+							Authorization: `Bearer ${accessToken}`,
+							"Content-Type": "application/json",
+						},
+						body: JSON.stringify({
+							values: [row],
+						}),
 					},
-					body: JSON.stringify({
-						values: rows,
-					}),
-				},
-			);
-
-			if (!response.ok) {
-				throw new Error(`Failed to append rows: ${response.statusText}`);
+				);
+			} else {
+				// Append new row and get its position
+				response = await fetch(
+					`https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEET_ID}/values/responses:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS&includeValuesInResponse=true`,
+					{
+						method: "POST",
+						headers: {
+							Authorization: `Bearer ${accessToken}`,
+							"Content-Type": "application/json",
+						},
+						body: JSON.stringify({
+							values: [row],
+						}),
+					},
+				);
 			}
 
-			// Mark as submitted in juros sheet
-			await this.markAsSubmitted(codeCheck.rowIndex);
+			if (!response.ok) {
+				throw new Error(
+					`Failed to ${existingRowNumber ? "update" : "append"} row: ${response.statusText}`,
+				);
+			}
 
-			return true;
+			// If this was a new row, get its position from the response
+			if (!existingRowNumber) {
+				const data = await response.json();
+				const updatedRange = data.updates?.updatedRange;
+				if (updatedRange) {
+					// Extract row number from range (e.g., "responses!A15:L15" -> 15)
+					const match = updatedRange.match(/\d+/);
+					if (match) {
+						return { success: true, rowNumber: parseInt(match[0]) };
+					}
+				}
+			}
+
+			return { success: true, rowNumber: existingRowNumber };
 		} catch (error) {
-			console.error("Error submitting comparisons:", error);
+			console.error("Error submitting comparison:", error);
 			throw error;
 		}
 	}
