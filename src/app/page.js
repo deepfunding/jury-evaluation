@@ -423,7 +423,8 @@ export default function Home() {
 												{comparison.choice === 1
 													? comparison.itemAName
 													: comparison.itemBName}{" "}
-												is deserves {comparison.multiplier}x more credit than{" "}
+												is {comparison.multiplier}x more valuable to the success
+												of Ethereum than{" "}
 												{comparison.choice === 1
 													? comparison.itemBName
 													: comparison.itemAName}
