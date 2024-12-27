@@ -280,4 +280,61 @@ export class GoogleSheetsService {
 			throw error;
 		}
 	}
+
+	async getPreviousComparisons(repoA, repoB) {
+		try {
+			const accessToken = await getAccessToken();
+
+			// Get values from the 'responses' sheet (columns G to L)
+			const response = await fetch(
+				`https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEET_ID}/values/responses!G:L`,
+				{
+					headers: {
+						Authorization: `Bearer ${accessToken}`,
+					},
+				},
+			);
+
+			if (!response.ok) {
+				throw new Error(`Failed to fetch sheet data: ${response.statusText}`);
+			}
+
+			const { values } = await response.json();
+			if (!values || values.length === 0) return [];
+
+			// Skip header row and filter for matching repository pairs
+			const comparisons = values
+				.slice(1) // Skip header row
+				.filter((row) => {
+					// Skip rows with missing data
+					if (!row[0] || !row[1]) return false;
+					
+					const repoAName = row[0].trim(); // Column G (first repo)
+					const repoBName = row[1].trim(); // Column H (second repo)
+					
+					// Match repository pairs in either order
+					return (
+						(repoAName === repoA && repoBName === repoB) ||
+						(repoAName === repoB && repoBName === repoA)
+					);
+				})
+				.map((row) => {
+					const choice = parseInt(row[2]); // Column I (choice)
+					const multiplier = parseFloat(row[3]); // Column J (multiplier)
+					const reasoning = row[5] || ""; // Column L (reasoning)
+
+					// Validate and clean the data
+					return {
+						choice: isNaN(choice) ? 1 : choice,
+						multiplier: isNaN(multiplier) ? 1 : multiplier,
+						reasoning: reasoning.trim(),
+					};
+				});
+
+			return comparisons;
+		} catch (error) {
+			console.error("Error fetching previous comparisons:", error);
+			throw error;
+		}
+	}
 }

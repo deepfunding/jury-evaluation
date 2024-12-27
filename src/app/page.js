@@ -22,9 +22,14 @@ import {
 	DialogTitle,
 	DialogDescription,
 } from "@/components/ui/dialog";
+import { Clippy } from "@/components/Clippy";
+import { PreviousComparisons } from "@/components/PreviousComparisons";
+import { MOCK_USER_DATA } from '@/data/mockData';
+
+const isDev = process.env.NODE_ENV === 'development';
 
 export default function Home() {
-	const [inviteCode, setInviteCode] = useState("");
+	const [inviteCode, setInviteCode] = useState(isDev ? MOCK_USER_DATA.inviteCode : "");
 	const [error, setError] = useState("");
 	const [isValidated, setIsValidated] = useState(false);
 	const [pairs, setPairs] = useState([]);
@@ -36,9 +41,9 @@ export default function Home() {
 	const [showSuccessDialog, setShowSuccessDialog] = useState(false);
 	const [showReviewPanel, setShowReviewPanel] = useState(false);
 	const [userData, setUserData] = useState({
-		name: "",
-		email: "",
-		inviteCode: "",
+		name: isDev ? MOCK_USER_DATA.name : "",
+		email: isDev ? MOCK_USER_DATA.email : "",
+		inviteCode: isDev ? MOCK_USER_DATA.inviteCode : "",
 	});
 	const [reasoning, setReasoning] = useState("");
 	const [isSubmitting, setIsSubmitting] = useState(false);
@@ -53,6 +58,8 @@ export default function Home() {
 	const [roundPairs, setRoundPairs] = useState({});
 	const [showSaveDialog, setShowSaveDialog] = useState(false);
 	const [isSaved, setIsSaved] = useState(false);
+	const [showPreviousEvals, setShowPreviousEvals] = useState(false);
+	const [pagination, setPagination] = useState(null);
 
 	const handleValidate = async (e) => {
 		e.preventDefault();
@@ -617,147 +624,181 @@ export default function Home() {
 								{showReviewPanel ? "Hide Review" : "Show Review"}
 							</Button>
 						</div>
-						<p className="text-sm text-muted-foreground">
-							{`You've completed ${comparisons.length} ${
-								comparisons.length === 1 ? "comparison" : "comparisons"
-							}. All responses are automatically saved.`}
-							{round >= 2 && (
-								<>
-									<br />
-									You can finish now or continue with more comparisons. Use the
-									review button to check or edit your previous responses.
-								</>
+						<div className="flex items-baseline">
+							<p className="text-sm text-muted-foreground w-[600px]">
+								{`You've completed ${comparisons.length} ${
+									comparisons.length === 1 ? "comparison" : "comparisons"
+								}. All responses are automatically saved.`}
+								{round >= 2 && (
+									<>
+										<br />
+										You can finish now or continue with more comparisons. Use the
+										review button to check or edit your previous responses.
+									</>
+								)}
+							</p>
+							{showPreviousEvals && (
+								<div className="text-sm ml-12">
+									<div className="font-medium">Previous Evaluations</div>
+									<div className="text-xs text-muted-foreground">
+										{pagination && `${pagination.total} evaluations from others`}
+									</div>
+								</div>
 							)}
-						</p>
+						</div>
 					</div>
 
 					{showReviewPanel ? (
 						<ComparisonReviewPanel />
 					) : (
-						<Card className="max-w-2xl">
-							<CardHeader>
-								<CardTitle className="flex justify-between items-center">
-									<span>
-										{isEditMode
-											? `Editing Round ${round} - Comparison ${
-													comparisons.findIndex(
-														(c) =>
-															c.round === round &&
-															c.itemAIndex === seeds.indexOf(pairs[0][0]) &&
-															c.itemBIndex === seeds.indexOf(pairs[0][1]),
-													) + 1
-												} of 5`
-											: `Comparison ${(currentPairIndex % 5) + 1} of 5`}
-									</span>
-									{!isEditMode && (
-										<Button
-											variant="secondary"
-											size="sm"
-											onClick={handleRefreshPairs}
-											disabled={isSubmitting}
-											className="bg-gray-100 hover:bg-gray-200"
-										>
-											<RefreshCw className="h-4 w-4 mr-2" />
-											Refresh Pairs
-										</Button>
-									)}
-								</CardTitle>
-							</CardHeader>
-							<CardContent className="space-y-6">
-								<div className="space-y-6">
-									<div className="space-y-4">
-										<p className="text-lg text-center">
-											Which dependency has been more valuable to the success of
-											Ethereum?
-										</p>
-										<div className="flex justify-center gap-4">
+						<div className="flex gap-12">
+							<Card className="w-[600px]">
+								<CardHeader>
+									<CardTitle className="flex justify-between items-center">
+										<span>
+											{isEditMode
+												? `Editing Round ${round} - Comparison ${
+														comparisons.findIndex(
+															(c) =>
+																c.round === round &&
+																c.itemAIndex === seeds.indexOf(pairs[0][0]) &&
+																c.itemBIndex === seeds.indexOf(pairs[0][1]),
+														) + 1
+													} of 5`
+												: `Comparison ${(currentPairIndex % 5) + 1} of 5`}
+										</span>
+										{!isEditMode && (
 											<Button
-												variant={selectedChoice === 1 ? "default" : "outline"}
-												onClick={() => handleChoiceSelect(1)}
-												className="flex-1 max-w-xs"
+												variant="secondary"
+												size="sm"
+												onClick={handleRefreshPairs}
 												disabled={isSubmitting}
+												className="bg-gray-100 hover:bg-gray-200"
 											>
-												{formatRepoName(pairs[currentPairIndex][0])}
+												<RefreshCw className="h-4 w-4 mr-2" />
+												Refresh Pairs
 											</Button>
-											<Button
-												variant={selectedChoice === 2 ? "default" : "outline"}
-												onClick={() => handleChoiceSelect(2)}
-												className="flex-1 max-w-xs"
-												disabled={isSubmitting}
-											>
-												{formatRepoName(pairs[currentPairIndex][1])}
-											</Button>
-										</div>
-									</div>
-
-									<div className="space-y-4">
-										<div className="space-y-2">
-											<Label>Credit Multiplier</Label>
-											<p className="text-sm text-muted-foreground">
-												Enter how many times more credit the dependency you
-												choose deserves (1-999)
+										)}
+									</CardTitle>
+								</CardHeader>
+								<CardContent className="space-y-6">
+									<div className="space-y-6">
+										<div className="space-y-4">
+											<p className="text-lg text-center">
+												Which dependency has been more valuable to the success of
+												Ethereum?
 											</p>
-											<div className="flex gap-4 items-center">
-												<Input
-													type="number"
-													value={multiplier}
-													onChange={(e) => setMultiplier(e.target.value)}
-													placeholder="Enter a number (1-999)"
-													className="max-w-[200px]"
-													min="1"
-													max="999"
-													step="0.01"
+											<div className="flex justify-center gap-4">
+												<Button
+													variant={selectedChoice === 1 ? "default" : "outline"}
+													onClick={() => handleChoiceSelect(1)}
+													className="flex-1 max-w-xs"
 													disabled={isSubmitting}
-												/>
+												>
+													{formatRepoName(pairs[currentPairIndex][0])}
+												</Button>
+												<Button
+													variant={selectedChoice === 2 ? "default" : "outline"}
+													onClick={() => handleChoiceSelect(2)}
+													className="flex-1 max-w-xs"
+													disabled={isSubmitting}
+												>
+													{formatRepoName(pairs[currentPairIndex][1])}
+												</Button>
 											</div>
 										</div>
 
-										<div className="space-y-2">
-											<Label htmlFor="reasoning">Reasoning</Label>
-											<p className="text-sm text-muted-foreground">
-												Please explain your choice and the multiplier value
-												(~200 words)
-											</p>
-											<Textarea
-												id="reasoning"
-												value={reasoning}
-												onChange={(e) => setReasoning(e.target.value)}
-												className="h-32"
-												disabled={isSubmitting}
-											/>
-										</div>
+										<div className="space-y-4">
+											<div className="space-y-2">
+												<Label>Credit Multiplier</Label>
+												<p className="text-sm text-muted-foreground">
+													Enter how many times more credit the dependency you
+													choose deserves (1-999)
+												</p>
+												<div className="flex gap-4 items-center">
+													<Input
+														type="number"
+														value={multiplier}
+														onChange={(e) => setMultiplier(e.target.value)}
+														placeholder="Enter a number (1-999)"
+														className="max-w-[200px]"
+														min="1"
+														max="999"
+														step="0.01"
+														disabled={isSubmitting}
+													/>
+												</div>
+											</div>
 
-										<div className="flex flex-col items-center">
-											<Button
-												onClick={handleNext}
-												disabled={isSubmitting}
-												className="mb-2"
-											>
-												{isSubmitting ? (
-													<>
-														<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-														<span>Submitting...</span>
-													</>
-												) : (
-													"Next"
+											<div className="space-y-2">
+												<Label htmlFor="reasoning">Reasoning</Label>
+												<p className="text-sm text-muted-foreground">
+													Please explain your choice and the multiplier value
+													(~200 words)
+												</p>
+												<Textarea
+													id="reasoning"
+													value={reasoning}
+													onChange={(e) => setReasoning(e.target.value)}
+													className="h-32"
+													disabled={isSubmitting}
+												/>
+											</div>
+
+											<div className="flex flex-col items-center">
+												<Button
+													onClick={handleNext}
+													disabled={isSubmitting}
+													className="mb-2"
+												>
+													{isSubmitting ? (
+														<>
+															<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+															<span>Submitting...</span>
+														</>
+													) : (
+														"Next"
+													)}
+												</Button>
+												{showSuccessMessage && (
+													<span className="text-sm text-green-600">
+														Previous response recorded successfully
+													</span>
 												)}
-											</Button>
-											{showSuccessMessage && (
-												<span className="text-sm text-green-600">
-													Previous response recorded successfully
-												</span>
-											)}
+											</div>
 										</div>
 									</div>
-								</div>
 
-								{error && (
-									<Alert variant="destructive">
-										<AlertDescription>{error}</AlertDescription>
-									</Alert>
+									{error && (
+										<Alert variant="destructive">
+											<AlertDescription>{error}</AlertDescription>
+										</Alert>
+									)}
+								</CardContent>
+							</Card>
+
+							<div className="w-[400px] relative">
+								{showPreviousEvals && (
+									<Card>
+										<CardContent>
+											<PreviousComparisons
+												repoA={formatRepoName(pairs[currentPairIndex][0])}
+												repoB={formatRepoName(pairs[currentPairIndex][1])}
+												onPaginationChange={setPagination}
+											/>
+										</CardContent>
+									</Card>
 								)}
-							</CardContent>
-						</Card>
+								{!showReviewPanel && (
+									<div className="absolute bottom-0 right-0">
+										<Clippy
+											onTogglePreviousEvals={() => setShowPreviousEvals(!showPreviousEvals)}
+											showPreviousEvals={showPreviousEvals}
+										/>
+									</div>
+								)}
+							</div>
+						</div>
 					)}
 				</div>
 			)}
