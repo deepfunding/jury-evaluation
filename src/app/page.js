@@ -133,8 +133,18 @@ export default function Home() {
 
 	const handleEditComparison = (index) => {
 		const comparison = comparisons[index];
+		
+		// 해당 라운드의 모든 비교 데이터 가져오기
+		const roundComparisons = comparisons.filter(c => c.round === comparison.round);
+		
+		// 현재 편집하려는 비교의 순서 찾기
+		const comparisonOrder = roundComparisons.findIndex(
+			c => 
+				c.itemAIndex === comparison.itemAIndex && 
+				c.itemBIndex === comparison.itemBIndex
+		) + 1;
 
-		// Store original state
+		// Store original state (한 번만 설정)
 		setOriginalRound(round);
 		setOriginalIndex(currentPairIndex);
 
@@ -148,6 +158,7 @@ export default function Home() {
 			setRoundPairs((prev) => ({ ...prev, [round]: pairs }));
 		}
 
+		// 상태 업데이트를 한 번에 처리
 		setRound(comparison.round);
 		setPairs(editPairs);
 		setCurrentPairIndex(0);
@@ -158,10 +169,7 @@ export default function Home() {
 		setIsAllCompleted(false);
 		setIsEditMode(true);
 		setError("");
-		
-		// Add these lines to switch to evaluation view
 		setCurrentView('evaluation');
-		setShowReviewPanel(false);
 	};
 
 	const handleViewChange = (view) => {
@@ -401,7 +409,12 @@ export default function Home() {
 		).sort((a, b) => a - b);
 
 		const currentRoundPairs = roundPairs[currentReviewRound] || [];
-		const isCurrentRoundComplete = roundComparisons.length === 5;
+		const isCurrentRoundComplete = useMemo(() => {
+			const roundComparisons = comparisons.filter(
+				(comparison) => comparison.round === currentReviewRound
+			);
+			return roundComparisons.length === 5;
+		}, [comparisons, currentReviewRound]);
 
 		// Only show completed comparisons and the current one being worked on
 		const displayComparisons = roundComparisons
@@ -443,29 +456,6 @@ export default function Home() {
 
 		return (
 			<div className="space-y-6">
-				{currentReviewRound === round &&
-					!isEditMode &&
-					isCurrentRoundComplete &&
-					!isSaved && (
-						<div className="flex justify-end items-center gap-4">
-							<Button
-								variant="outline"
-								onClick={handleSaveResult}
-								className="px-8"
-							>
-								Save Responses
-							</Button>
-							{currentView === 'evaluation' && (
-								<Button
-									onClick={handleContinue}
-									className="px-8 bg-green-600 hover:bg-green-700"
-								>
-									Continue Evaluation
-								</Button>
-							)}
-						</div>
-				)}
-
 				<Card className="max-w-2xl">
 					<CardHeader className="space-y-4">
 						<div className="space-y-2">
@@ -483,6 +473,29 @@ export default function Home() {
 									? "All comparisons for this round are successfully submitted."
 									: `${roundComparisons.length} of 5 comparisons completed in this round.`}
 							</p>
+						)}
+						{currentReviewRound === round &&
+							!isEditMode &&
+							isCurrentRoundComplete && (
+								<div className="flex justify-end items-center gap-4 pt-4">
+									{!isSaved && (
+										<Button
+											variant="outline"
+											onClick={handleSaveResult}
+											className="px-8"
+										>
+											Save Responses
+										</Button>
+									)}
+									{currentView === 'evaluation' && (
+										<Button
+											onClick={handleContinue}
+											className="px-8 bg-green-600 hover:bg-green-700"
+										>
+											Continue Evaluation
+										</Button>
+									)}
+								</div>
 						)}
 					</CardHeader>
 					<CardContent className="space-y-4">
