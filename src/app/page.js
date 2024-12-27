@@ -71,6 +71,8 @@ export default function Home() {
 		message: '',
 	});
 
+	const [isTransitioning, setIsTransitioning] = useState(false);
+
 	const handleValidate = async (e) => {
 		e.preventDefault();
 		setError("");
@@ -164,15 +166,17 @@ export default function Home() {
 
 	const handleViewChange = (view) => {
 		if (view === 'evaluation') {
-			// Ongoing 뷰로 전환할 때 필요한 상태 초기화
-			setShowReviewPanel(false);
-			
-			// 라운드의 마지막 항목이었다면 첫 번째 미완료 항목으로 이동
+			// 현재 라운드의 완료된 비교 수를 확인
 			const currentRoundComparisons = comparisons.filter(c => c.round === round);
-			if (currentRoundComparisons.length === pairs.length) {
-				// 모든 비교가 완료된 상태라면 리뷰 패널 표시
+			
+			if (currentRoundComparisons.length === 5) {
+				// 현재 라운드가 완료된 상태
 				setShowReviewPanel(true);
+				setCurrentReviewRound(round);
 			} else {
+				// 현재 라운드가 진행 중인 상태
+				setShowReviewPanel(false);
+				
 				// 첫 번째 미완료 항목으로 이동
 				const nextIncompleteIndex = pairs.findIndex((pair, index) => {
 					return !currentRoundComparisons.some(
@@ -181,7 +185,14 @@ export default function Home() {
 							c.itemBIndex === seeds.indexOf(pair[1])
 					);
 				});
-				setCurrentPairIndex(nextIncompleteIndex !== -1 ? nextIncompleteIndex : 0);
+				
+				if (nextIncompleteIndex === -1) {
+					// 모든 비교가 완료된 경우 (이론적으로는 여기 올 수 없음)
+					setShowReviewPanel(true);
+					setCurrentReviewRound(round);
+				} else {
+					setCurrentPairIndex(nextIncompleteIndex);
+				}
 			}
 		}
 		setCurrentView(view);
@@ -203,6 +214,7 @@ export default function Home() {
 			return;
 		}
 
+		// Create comparison data
 		const currentPair = pairs[currentPairIndex];
 		const choice = selectedChoice;
 		const multiplierValue = parseFloat(multiplier);
@@ -221,33 +233,38 @@ export default function Home() {
 			round: round,
 		};
 
-		// Move to next comparison immediately
-		if (isEditMode) {
-			// Return to original state
-			setRound(originalRound);
-			setPairs(roundPairs[originalRound]);
-			setCurrentPairIndex(originalIndex);
-			setIsEditMode(false);
-			setOriginalRound(null);
-			setOriginalIndex(null);
-			setSelectedChoice(null);
-			setMultiplier("");
-			setReasoning("");
-			setCurrentView('review');
-		} else {
-			// If we've completed all comparisons in this round
-			if (currentPairIndex === pairs.length - 1) {
-				setShowReviewPanel(true);
-				setCurrentReviewRound(round);
-			} else {
-				// Move to next comparison
-				setCurrentPairIndex(currentPairIndex + 1);
+		// Add transition effect
+		setIsTransitioning(true);
+		setTimeout(() => {
+			// Move to next comparison immediately
+			if (isEditMode) {
+				// Return to original state
+				setRound(originalRound);
+				setPairs(roundPairs[originalRound]);
+				setCurrentPairIndex(originalIndex);
+				setIsEditMode(false);
+				setOriginalRound(null);
+				setOriginalIndex(null);
 				setSelectedChoice(null);
 				setMultiplier("");
 				setReasoning("");
+				setCurrentView('review');
+			} else {
+				// If we've completed all comparisons in this round
+				if (currentPairIndex === pairs.length - 1) {
+					setShowReviewPanel(true);
+					setCurrentReviewRound(round);
+				} else {
+					// Move to next comparison
+					setCurrentPairIndex(currentPairIndex + 1);
+					setSelectedChoice(null);
+					setMultiplier("");
+					setReasoning("");
+				}
 			}
-		}
-		setError("");
+			setError("");
+			setIsTransitioning(false);
+		}, 300);
 
 		// Start submission in background
 		setSubmissionStatus({ isSubmitting: true, message: 'Submitting response...' });
@@ -425,130 +442,131 @@ export default function Home() {
 		}
 
 		return (
-			<Card className="max-w-2xl mb-8">
-				<CardHeader className="space-y-4">
-					<div className="space-y-2">
-						<CardTitle>Thank you for your participation!</CardTitle>
-						<p className="text-sm text-muted-foreground">
-							You can review and edit your previous responses below.
-						</p>
-					</div>
-					<div className="flex justify-between items-center">
-						<h3 className="text-lg font-medium">Round {currentReviewRound}</h3>
-					</div>
-					{currentReviewRound === round && (
-						<p className="text-sm text-muted-foreground">
-							{isCurrentRoundComplete
-								? "All comparisons for this round are successfully submitted."
-								: `${roundComparisons.length} of 5 comparisons completed in this round.`}
-						</p>
-					)}
-				</CardHeader>
-				<CardContent className="space-y-4">
-					{displayComparisons.map((comparison) => (
-						<Card
-							key={
-								comparison.isIncomplete
-									? comparison.id
-									: `${comparison.round}-${comparison.itemAIndex}-${comparison.itemBIndex}`
-							}
-							className="p-4"
-						>
-							<div className="flex justify-between items-start">
-								<div className="space-y-2">
-									{comparison.isIncomplete ? (
-										<p className="text-sm text-muted-foreground">
-											Currently comparing {comparison.itemAName} with{" "}
-											{comparison.itemBName}
-										</p>
-									) : (
-										<>
-											<p className="text-sm text-muted-foreground">
-												{comparison.choice === 1
-													? comparison.itemAName
-													: comparison.itemBName}{" "}
-												is {comparison.multiplier}x more valuable to the success
-												of Ethereum than{" "}
-												{comparison.choice === 1
-													? comparison.itemBName
-													: comparison.itemAName}
-											</p>
-											<p className="text-sm">{comparison.reasoning}</p>
-										</>
-									)}
-								</div>
-								{!comparison.isIncomplete && (
-									<Button
-										variant="outline"
-										onClick={() =>
-											handleEditComparison(
-												comparisons.findIndex(
-													(c) =>
-														c.round === currentReviewRound &&
-														c.itemAIndex === comparison.itemAIndex &&
-														c.itemBIndex === comparison.itemBIndex,
-												),
-											)
-										}
-									>
-										Edit
-									</Button>
-								)}
-								{comparison.isIncomplete && (
-									<Button
-										onClick={() => {
-											setShowReviewPanel(false);
-											setCurrentPairIndex(comparison.index);
-											setCurrentView('evaluation');
-										}}
-									>
-										Continue
-									</Button>
-								)}
-							</div>
-						</Card>
-					))}
-
-					<div className="space-y-6 mt-8 pt-4 border-t">
-						<div className="flex justify-center gap-2">
-							{availableRounds.map((r) => (
+			<div className="space-y-6">
+				{currentReviewRound === round &&
+					!isEditMode &&
+					isCurrentRoundComplete &&
+					!isSaved && (
+						<div className="flex justify-end items-center gap-4 mb-4">
+							<Button
+								variant="outline"
+								onClick={handleSaveResult}
+								className="px-8"
+							>
+								Save Responses
+							</Button>
+							{currentView === 'evaluation' && (
 								<Button
-									key={r}
-									variant={currentReviewRound === r ? "default" : "outline"}
-									onClick={() => setCurrentReviewRound(r)}
-									className="w-10 h-10 p-0"
+									onClick={handleContinue}
+									className="px-8 bg-green-600 hover:bg-green-700"
 								>
-									{r}
+									Continue Evaluation
 								</Button>
-							))}
+							)}
 						</div>
-						<div className="flex justify-end items-center gap-4">
-							{currentReviewRound === round &&
-								!isEditMode &&
-								isCurrentRoundComplete &&
-								!isSaved && (
-									<div className="flex items-center gap-4">
-										<Button
-											variant="outline"
-											onClick={handleSaveResult}
-											className="px-8"
-										>
-											Save Responses
-										</Button>
-										{currentView === 'evaluation' && (
-											<Button
-												onClick={handleContinue}
-												className="px-8 bg-green-600 hover:bg-green-700"
-											>
-												Continue Evaluation
-											</Button>
+				)}
+
+				<Card className="max-w-2xl">
+					<CardHeader className="space-y-4">
+						<div className="space-y-2">
+							<CardTitle>Thank you for your participation!</CardTitle>
+							<p className="text-sm text-muted-foreground">
+								You can review and edit your previous responses below.
+							</p>
+						</div>
+						<div className="flex justify-between items-center">
+							<h3 className="text-lg font-medium">Round {currentReviewRound}</h3>
+						</div>
+						{currentReviewRound === round && (
+							<p className="text-sm text-muted-foreground">
+								{isCurrentRoundComplete
+									? "All comparisons for this round are successfully submitted."
+									: `${roundComparisons.length} of 5 comparisons completed in this round.`}
+							</p>
+						)}
+					</CardHeader>
+					<CardContent className="space-y-4">
+						{displayComparisons.map((comparison) => (
+							<Card
+								key={
+									comparison.isIncomplete
+										? comparison.id
+										: `${comparison.round}-${comparison.itemAIndex}-${comparison.itemBIndex}`
+								}
+								className="p-4"
+							>
+								<div className="flex justify-between items-start">
+									<div className="space-y-2">
+										{comparison.isIncomplete ? (
+											<p className="text-sm text-muted-foreground">
+												Currently comparing {comparison.itemAName} with{" "}
+												{comparison.itemBName}
+											</p>
+										) : (
+											<>
+												<p className="text-sm text-muted-foreground">
+													{comparison.choice === 1
+														? comparison.itemAName
+														: comparison.itemBName}{" "}
+													is {comparison.multiplier}x more valuable to the success
+													of Ethereum than{" "}
+													{comparison.choice === 1
+														? comparison.itemBName
+														: comparison.itemAName}
+												</p>
+												<p className="text-sm">{comparison.reasoning}</p>
+											</>
 										)}
 									</div>
-								)}
+									{!comparison.isIncomplete && (
+										<Button
+											variant="outline"
+											onClick={() =>
+												handleEditComparison(
+													comparisons.findIndex(
+														(c) =>
+															c.round === currentReviewRound &&
+															c.itemAIndex === comparison.itemAIndex &&
+															c.itemBIndex === comparison.itemBIndex,
+													),
+												)
+											}
+										>
+											Edit
+										</Button>
+									)}
+									{comparison.isIncomplete && (
+										<Button
+											onClick={() => {
+												setShowReviewPanel(false);
+												setCurrentPairIndex(comparison.index);
+												setCurrentView('evaluation');
+											}}
+										>
+											Continue
+										</Button>
+									)}
+								</div>
+							</Card>
+						))}
+
+						<div className="space-y-6 mt-8 pt-4 border-t">
+							<div className="flex justify-center gap-2">
+								{availableRounds.map((r) => (
+									<Button
+										key={r}
+										variant={currentReviewRound === r ? "default" : "outline"}
+										onClick={() => setCurrentReviewRound(r)}
+										className="w-10 h-10 p-0"
+									>
+										{r}
+									</Button>
+								))}
+							</div>
 						</div>
-					</div>
-				</CardContent>
-			</Card>
+					</CardContent>
+				</Card>
+			</div>
 		);
 	};
 
@@ -816,7 +834,9 @@ export default function Home() {
 									<ComparisonReviewPanel />
 								) : (
 									<div className="flex gap-12">
-										<Card className="w-[600px]">
+										<Card className={`w-[600px] transition-opacity duration-150 ${
+											isTransitioning ? 'opacity-60' : 'opacity-100'
+										}`}>
 											<CardHeader>
 												<CardTitle className="flex justify-between items-center">
 													<span>
