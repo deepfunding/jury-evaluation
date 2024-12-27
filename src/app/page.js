@@ -447,7 +447,7 @@ export default function Home() {
 					!isEditMode &&
 					isCurrentRoundComplete &&
 					!isSaved && (
-						<div className="flex justify-end items-center gap-4 mb-4">
+						<div className="flex justify-end items-center gap-4">
 							<Button
 								variant="outline"
 								onClick={handleSaveResult}
