@@ -2,89 +2,89 @@ const GOOGLE_PRIVATE_KEY = process.env.GOOGLE_PRIVATE_KEY;
 const GOOGLE_SERVICE_ACCOUNT_EMAIL = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
 const GOOGLE_SHEET_ID = process.env.GOOGLE_SHEET_ID;
 
-async function getAccessToken() {
-	const jwtHeader = {
-		alg: "RS256",
-		typ: "JWT",
-	};
-
-	const now = Math.floor(Date.now() / 1000);
-	const jwtClaimSet = {
-		iss: GOOGLE_SERVICE_ACCOUNT_EMAIL,
-		scope: "https://www.googleapis.com/auth/spreadsheets",
-		aud: "https://oauth2.googleapis.com/token",
-		exp: now + 3600,
-		iat: now,
-	};
-
-	// Create JWT
-	const encodedHeader = btoa(JSON.stringify(jwtHeader));
-	const encodedClaimSet = btoa(JSON.stringify(jwtClaimSet));
-	const signatureInput = `${encodedHeader}.${encodedClaimSet}`;
-
-	// Convert private key from PEM to binary format
-	const pemContents = GOOGLE_PRIVATE_KEY.replace(
-		"-----BEGIN PRIVATE KEY-----",
-		"",
-	)
-		.replace("-----END PRIVATE KEY-----", "")
-		.replace(/\\n/g, "\n")
-		.replace(/\s/g, "");
-
-	// Decode base64 to binary
-	const binaryKey = Uint8Array.from(atob(pemContents), (c) => c.charCodeAt(0));
-
-	// Import the key
-	const privateKey = await crypto.subtle.importKey(
-		"pkcs8",
-		binaryKey,
-		{
-			name: "RSASSA-PKCS1-v1_5",
-			hash: "SHA-256",
-		},
-		false,
-		["sign"],
-	);
-
-	// Sign the input
-	const signature = await crypto.subtle.sign(
-		"RSASSA-PKCS1-v1_5",
-		privateKey,
-		new TextEncoder().encode(signatureInput),
-	);
-
-	// Create the complete JWT
-	const jwt = `${signatureInput}.${btoa(String.fromCharCode(...new Uint8Array(signature)))}`;
-
-	// Exchange JWT for access token
-	const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
-		method: "POST",
-		headers: {
-			"Content-Type": "application/x-www-form-urlencoded",
-		},
-		body: new URLSearchParams({
-			grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
-			assertion: jwt,
-		}),
-	});
-
-	const { access_token } = await tokenResponse.json();
-	return access_token;
-}
-
 export class GoogleSheetsService {
+	async getAccessToken() {
+		const jwtHeader = {
+			alg: "RS256",
+			typ: "JWT",
+		};
+
+		const now = Math.floor(Date.now() / 1000);
+		const jwtClaimSet = {
+			iss: GOOGLE_SERVICE_ACCOUNT_EMAIL,
+			scope: "https://www.googleapis.com/auth/spreadsheets",
+			aud: "https://oauth2.googleapis.com/token",
+			exp: now + 3600,
+			iat: now,
+		};
+
+		// Create JWT
+		const encodedHeader = btoa(JSON.stringify(jwtHeader));
+		const encodedClaimSet = btoa(JSON.stringify(jwtClaimSet));
+		const signatureInput = `${encodedHeader}.${encodedClaimSet}`;
+
+		// Convert private key from PEM to binary format
+		const pemContents = GOOGLE_PRIVATE_KEY.replace(
+			"-----BEGIN PRIVATE KEY-----",
+			"",
+		)
+			.replace("-----END PRIVATE KEY-----", "")
+			.replace(/\\n/g, "\n")
+			.replace(/\s/g, "");
+
+		// Decode base64 to binary
+		const binaryKey = Uint8Array.from(atob(pemContents), (c) => c.charCodeAt(0));
+
+		// Import the key
+		const privateKey = await crypto.subtle.importKey(
+			"pkcs8",
+			binaryKey,
+			{
+				name: "RSASSA-PKCS1-v1_5",
+				hash: "SHA-256",
+			},
+			false,
+			["sign"],
+		);
+
+		// Sign the input
+		const signature = await crypto.subtle.sign(
+			"RSASSA-PKCS1-v1_5",
+			privateKey,
+			new TextEncoder().encode(signatureInput),
+		);
+
+		// Create the complete JWT
+		const jwt = `${signatureInput}.${btoa(String.fromCharCode(...new Uint8Array(signature)))}`;
+
+		// Exchange JWT for access token
+		const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/x-www-form-urlencoded",
+			},
+			body: new URLSearchParams({
+				grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+				assertion: jwt,
+			}),
+		});
+
+		const { access_token } = await tokenResponse.json();
+		return access_token;
+	}
+
 	async findInviteCode(inviteCode) {
 		try {
-			const accessToken = await getAccessToken();
+			const accessToken = await this.getAccessToken();
 
 			// Get values from the 'juros' sheet, columns D and E
 			const response = await fetch(
-				`https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEET_ID}/values/juros!D:E`,
-				{
-					headers: {
-						Authorization: `Bearer ${accessToken}`,
+					`https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEET_ID}/values/juros!D:E`,
+					{
+						headers: {
+							Authorization: `Bearer ${accessToken}`,
+						},
 					},
-				},
 			);
 
 			if (!response.ok) {
@@ -115,7 +115,7 @@ export class GoogleSheetsService {
 
 	async markAsSubmitted(rowIndex) {
 		try {
-			const accessToken = await getAccessToken();
+			const accessToken = await this.getAccessToken();
 
 			// Update the cell in column E to 'yes'
 			const response = await fetch(
@@ -147,7 +147,7 @@ export class GoogleSheetsService {
 
 	async submitRatings(data) {
 		try {
-			const accessToken = await getAccessToken();
+			const accessToken = await this.getAccessToken();
 
 			// First verify the invite code and get row index
 			const codeCheck = await this.findInviteCode(data.userData.inviteCode);
@@ -198,7 +198,7 @@ export class GoogleSheetsService {
 
 	async submitComparison(userData, comparison, existingRowNumber = null) {
 		try {
-			const accessToken = await getAccessToken();
+			const accessToken = await this.getAccessToken();
 
 			// First verify the invite code and get row index
 			const codeCheck = await this.findInviteCode(userData.inviteCode);
@@ -281,60 +281,65 @@ export class GoogleSheetsService {
 		}
 	}
 
-	async getPreviousComparisons(repoA, repoB) {
+	async getAllComparisons() {
 		try {
-			const accessToken = await getAccessToken();
-
-			// Get values from the 'responses' sheet (columns G to L)
 			const response = await fetch(
-				`https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEET_ID}/values/responses!G:L`,
+				`https://sheets.googleapis.com/v4/spreadsheets/${process.env.GOOGLE_SHEET_ID}/values/responses!G2:L`,
 				{
 					headers: {
-						Authorization: `Bearer ${accessToken}`,
+						Authorization: `Bearer ${await this.getAccessToken()}`,
 					},
-				},
+				}
 			);
 
 			if (!response.ok) {
-				throw new Error(`Failed to fetch sheet data: ${response.statusText}`);
+				throw new Error('Failed to fetch responses from Google Sheets');
 			}
 
 			const { values } = await response.json();
-			if (!values || values.length === 0) return [];
+			if (!values) return [];
 
-			// Skip header row and filter for matching repository pairs
-			const comparisons = values
-				.slice(1) // Skip header row
-				.filter((row) => {
-					// Skip rows with missing data
-					if (!row[0] || !row[1]) return false;
-					
-					const repoAName = row[0].trim(); // Column G (first repo)
-					const repoBName = row[1].trim(); // Column H (second repo)
-					
-					// Match repository pairs in either order
-					return (
-						(repoAName === repoA && repoBName === repoB) ||
-						(repoAName === repoB && repoBName === repoA)
-					);
-				})
-				.map((row) => {
-					const choice = parseInt(row[2]); // Column I (choice)
-					const multiplier = parseFloat(row[3]); // Column J (multiplier)
-					const reasoning = row[5] || ""; // Column L (reasoning)
-
-					// Validate and clean the data
-					return {
-						choice: isNaN(choice) ? 1 : choice,
-						multiplier: isNaN(multiplier) ? 1 : multiplier,
-						reasoning: reasoning.trim(),
-					};
-				});
-
-			return comparisons;
+			return this._mapResponseToComparisons(values);
 		} catch (error) {
-			console.error("Error fetching previous comparisons:", error);
+			console.error('Error fetching all comparisons:', error);
 			throw error;
 		}
+	}
+
+	async getPreviousComparisons(repoA, repoB) {
+		try {
+			const allComparisons = await this.getAllComparisons();
+			
+			// repoA와 repoB가 모두 있는 경우에만 해당 페어의 비교 결과를 반환
+			if (repoA && repoB) {
+				return allComparisons.filter(comparison => 
+					(comparison.itemAName === repoA && comparison.itemBName === repoB) ||
+					(comparison.itemAName === repoB && comparison.itemBName === repoA)
+				);
+			}
+			
+			// repoA만 있는 경우 해당 프로젝트가 포함된 모든 비교 결과를 반환
+			if (repoA) {
+				return allComparisons.filter(comparison => 
+					comparison.itemAName === repoA || comparison.itemBName === repoA
+				);
+			}
+			
+			// 필터가 없는 경우 모든 비교 결과를 반��
+			return allComparisons;
+		} catch (error) {
+			console.error('Error fetching previous comparisons:', error);
+			throw error;
+		}
+	}
+
+	_mapResponseToComparisons(values) {
+		return values.map(row => ({
+			itemAName: row[0],     // G열 - 프로젝트 A 이름
+			itemBName: row[1],     // H열 - 프로젝트 B 이름
+			choice: row[2],        // I열 - 선택 (A or B)
+			multiplier: parseFloat(row[3]), // J열 - 배수
+			reasoning: row[5]      // L열 - 이유
+		}));
 	}
 }

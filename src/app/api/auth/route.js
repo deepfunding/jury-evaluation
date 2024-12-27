@@ -21,21 +21,6 @@ export async function POST(request) {
 			);
 		}
 
-		if (process.env.NODE_ENV === 'development') {
-			return new Response(
-				JSON.stringify({
-					success: true,
-					message: "Development mode: Invite code accepted",
-				}),
-				{
-					status: 200,
-					headers: {
-						"Content-Type": "application/json",
-					},
-				},
-			);
-		}
-
 		// Check invite code in Google Sheets
 		const sheetsService = new GoogleSheetsService();
 		const codeCheck = await sheetsService.findInviteCode(inviteCode);

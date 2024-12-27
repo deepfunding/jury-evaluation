@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -22,9 +22,10 @@ import {
 	DialogTitle,
 	DialogDescription,
 } from "@/components/ui/dialog";
-import { Clippy } from "@/components/Clippy";
-import { PreviousComparisons } from "@/components/PreviousComparisons";
 import { MOCK_USER_DATA } from '@/data/mockData';
+import { ScrollText, ListChecks, Users } from "lucide-react";
+import { CurrentRoundEvaluations } from "@/components/CurrentRoundEvaluations";
+import { AllEvaluationsList } from "@/components/AllEvaluationsList";
 
 const isDev = process.env.NODE_ENV === 'development';
 
@@ -58,8 +59,12 @@ export default function Home() {
 	const [roundPairs, setRoundPairs] = useState({});
 	const [showSaveDialog, setShowSaveDialog] = useState(false);
 	const [isSaved, setIsSaved] = useState(false);
-	const [showPreviousEvals, setShowPreviousEvals] = useState(false);
 	const [pagination, setPagination] = useState(null);
+	const [currentView, setCurrentView] = useState('evaluation');
+	const [selectedFilterRepo, setSelectedFilterRepo] = useState(null);
+
+	const [allEvaluations, setAllEvaluations] = useState([]);
+	const [currentPairEvaluations, setCurrentPairEvaluations] = useState({});
 
 	const handleValidate = async (e) => {
 		e.preventDefault();
@@ -146,6 +151,10 @@ export default function Home() {
 		setIsAllCompleted(false);
 		setIsEditMode(true);
 		setError("");
+		
+		// Add these lines to switch to evaluation view
+		setCurrentView('evaluation');
+		setShowReviewPanel(false);
 	};
 
 	const handleNext = async () => {
@@ -249,7 +258,8 @@ export default function Home() {
 				setSelectedChoice(null);
 				setMultiplier("");
 				setReasoning("");
-				setShowReviewPanel(true);
+				// Change these lines to switch back to review view
+				setCurrentView('review');
 				return;
 			}
 
@@ -390,14 +400,6 @@ export default function Home() {
 					</div>
 					<div className="flex justify-between items-center">
 						<h3 className="text-lg font-medium">Round {currentReviewRound}</h3>
-						{!isAllCompleted && (
-							<Button
-								variant="outline"
-								onClick={() => setShowReviewPanel(false)}
-							>
-								Close
-							</Button>
-						)}
 					</div>
 					{currentReviewRound === round && (
 						<p className="text-sm text-muted-foreground">
@@ -462,6 +464,7 @@ export default function Home() {
 										onClick={() => {
 											setShowReviewPanel(false);
 											setCurrentPairIndex(comparison.index);
+											setCurrentView('evaluation');
 										}}
 									>
 										Continue
@@ -497,12 +500,14 @@ export default function Home() {
 										>
 											Save Responses
 										</Button>
-										<Button
-											onClick={handleContinue}
-											className="px-8 bg-green-600 hover:bg-green-700"
-										>
-											Continue Evaluation
-										</Button>
+										{currentView === 'evaluation' && (
+											<Button
+												onClick={handleContinue}
+												className="px-8 bg-green-600 hover:bg-green-700"
+											>
+												Continue Evaluation
+											</Button>
+										)}
 									</div>
 								)}
 						</div>
@@ -511,6 +516,85 @@ export default function Home() {
 			</Card>
 		);
 	};
+
+	const fetchAllEvaluations = useCallback(async () => {
+		try {
+			const response = await fetch('/api/get-previous-comparisons', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({ repoA: null, repoB: null }),
+			});
+
+			if (!response.ok) {
+				throw new Error('Failed to fetch evaluations');
+			}
+
+			const data = await response.json();
+			setAllEvaluations(data.comparisons);
+		} catch (error) {
+			console.error('Error fetching evaluations:', error);
+		}
+	}, []);
+
+	useEffect(() => {
+		if (currentView === 'all-evaluations' && allEvaluations.length === 0) {
+			fetchAllEvaluations();
+		}
+	}, [currentView, allEvaluations.length, fetchAllEvaluations]);
+
+	const filteredEvaluations = useMemo(() => {
+		if (!selectedFilterRepo) return allEvaluations;
+		
+		return allEvaluations.filter(evaluation => 
+			evaluation.itemAName === selectedFilterRepo || 
+			evaluation.itemBName === selectedFilterRepo
+		);
+	}, [allEvaluations, selectedFilterRepo]);
+
+	// 현재 페어에 대한 평가 데이터 가져오기
+	const fetchPairEvaluations = useCallback(async (pairKey) => {
+		try {
+			const repoA = formatRepoName(pairs[currentPairIndex][0]);
+			const repoB = formatRepoName(pairs[currentPairIndex][1]);
+			
+			// 이미 캐시된 데이터가 있다면 사용
+			if (currentPairEvaluations[pairKey]) {
+				return;
+			}
+
+			const response = await fetch('/api/get-previous-comparisons', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({ repoA, repoB }),
+			});
+
+			if (!response.ok) {
+				throw new Error('Failed to fetch evaluations');
+			}
+
+			const data = await response.json();
+			setCurrentPairEvaluations(prev => ({
+				...prev,
+				[pairKey]: data.comparisons
+			}));
+		} catch (error) {
+			console.error('Error fetching pair evaluations:', error);
+		}
+	}, [pairs, currentPairIndex, currentPairEvaluations]);
+
+	// 현재 페어가 변경될 때마다 데이터 가져오기
+	useEffect(() => {
+		if (pairs[currentPairIndex]) {
+			const repoA = formatRepoName(pairs[currentPairIndex][0]);
+			const repoB = formatRepoName(pairs[currentPairIndex][1]);
+			const pairKey = `${repoA}-${repoB}`;
+			fetchPairEvaluations(pairKey);
+		}
+	}, [currentPairIndex, pairs, fetchPairEvaluations]);
 
 	return (
 		<div className="container mx-auto p-8">
@@ -608,198 +692,267 @@ export default function Home() {
 					</CardContent>
 				</Card>
 			) : (
-				<div>
-					<div className="flex flex-col gap-4 mb-4">
-						<div className="flex justify-between items-center">
-							<h2 className="text-lg font-semibold text-muted-foreground">
-								Round {round} - Compare Dependencies
-							</h2>
-							<Button
-								variant="outline"
-								onClick={() => {
-									setShowReviewPanel(!showReviewPanel);
-									setCurrentReviewRound(round);
-								}}
-							>
-								{showReviewPanel ? "Hide Review" : "Show Review"}
-							</Button>
+				<div className="flex gap-8">
+					<div className="flex flex-col gap-6 w-[200px]">
+						<div className="space-y-2">
+							<h3 className="font-medium text-sm text-muted-foreground px-3">My Evaluation</h3>
+							<div className="space-y-1">
+								<Button
+									variant={currentView === 'evaluation' ? 'default' : 'outline'}
+									className="justify-start w-full"
+									onClick={() => setCurrentView('evaluation')}
+								>
+									<ScrollText className="mr-2 h-4 w-4" />
+									Ongoing
+								</Button>
+								<Button
+									variant={currentView === 'review' ? 'default' : 'outline'}
+									className="justify-start w-full"
+									onClick={() => setCurrentView('review')}
+								>
+									<ListChecks className="mr-2 h-4 w-4" />
+									Review
+								</Button>
+							</div>
 						</div>
-						<div className="flex items-baseline">
-							<p className="text-sm text-muted-foreground w-[600px]">
-								{`You've completed ${comparisons.length} ${
-									comparisons.length === 1 ? "comparison" : "comparisons"
-								}. All responses are automatically saved.`}
-								{round >= 2 && (
-									<>
-										<br />
-										You can finish now or continue with more comparisons. Use the
-										review button to check or edit your previous responses.
-									</>
-								)}
-							</p>
-							{showPreviousEvals && (
-								<div className="text-sm ml-12">
-									<div className="font-medium">Previous Evaluations</div>
-									<div className="text-xs text-muted-foreground">
-										{pagination && `${pagination.total} evaluations from others`}
-									</div>
-								</div>
-							)}
+
+						<div className="space-y-2">
+							<h3 className="font-medium text-sm text-muted-foreground px-3">Others' Evaluations</h3>
+							<Button
+								variant={currentView === 'all-evaluations' ? 'default' : 'outline'}
+								className="justify-start w-full"
+								onClick={() => setCurrentView('all-evaluations')}
+							>
+								<Users className="mr-2 h-4 w-4" />
+								Browse All
+							</Button>
 						</div>
 					</div>
 
-					{showReviewPanel ? (
-						<ComparisonReviewPanel />
-					) : (
-						<div className="flex gap-12">
-							<Card className="w-[600px]">
-								<CardHeader>
-									<CardTitle className="flex justify-between items-center">
-										<span>
-											{isEditMode
-												? `Editing Round ${round} - Comparison ${
-														comparisons.findIndex(
-															(c) =>
-																c.round === round &&
-																c.itemAIndex === seeds.indexOf(pairs[0][0]) &&
-																c.itemBIndex === seeds.indexOf(pairs[0][1]),
-														) + 1
-													} of 5`
-												: `Comparison ${(currentPairIndex % 5) + 1} of 5`}
-										</span>
-										{!isEditMode && (
-											<Button
-												variant="secondary"
-												size="sm"
-												onClick={handleRefreshPairs}
-												disabled={isSubmitting}
-												className="bg-gray-100 hover:bg-gray-200"
-											>
-												<RefreshCw className="h-4 w-4 mr-2" />
-												Refresh Pairs
-											</Button>
-										)}
-									</CardTitle>
-								</CardHeader>
-								<CardContent className="space-y-6">
-									<div className="space-y-6">
-										<div className="space-y-4">
-											<p className="text-lg text-center">
-												Which dependency has been more valuable to the success of
-												Ethereum?
-											</p>
-											<div className="flex justify-center gap-4">
-												<Button
-													variant={selectedChoice === 1 ? "default" : "outline"}
-													onClick={() => handleChoiceSelect(1)}
-													className="flex-1 max-w-xs"
-													disabled={isSubmitting}
-												>
-													{formatRepoName(pairs[currentPairIndex][0])}
-												</Button>
-												<Button
-													variant={selectedChoice === 2 ? "default" : "outline"}
-													onClick={() => handleChoiceSelect(2)}
-													className="flex-1 max-w-xs"
-													disabled={isSubmitting}
-												>
-													{formatRepoName(pairs[currentPairIndex][1])}
-												</Button>
-											</div>
-										</div>
-
-										<div className="space-y-4">
-											<div className="space-y-2">
-												<Label>Credit Multiplier</Label>
-												<p className="text-sm text-muted-foreground">
-													Enter how many times more credit the dependency you
-													choose deserves (1-999)
-												</p>
-												<div className="flex gap-4 items-center">
-													<Input
-														type="number"
-														value={multiplier}
-														onChange={(e) => setMultiplier(e.target.value)}
-														placeholder="Enter a number (1-999)"
-														className="max-w-[200px]"
-														min="1"
-														max="999"
-														step="0.01"
-														disabled={isSubmitting}
-													/>
-												</div>
-											</div>
-
-											<div className="space-y-2">
-												<Label htmlFor="reasoning">Reasoning</Label>
-												<p className="text-sm text-muted-foreground">
-													Please explain your choice and the multiplier value
-													(~200 words)
-												</p>
-												<Textarea
-													id="reasoning"
-													value={reasoning}
-													onChange={(e) => setReasoning(e.target.value)}
-													className="h-32"
-													disabled={isSubmitting}
-												/>
-											</div>
-
-											<div className="flex flex-col items-center">
-												<Button
-													onClick={handleNext}
-													disabled={isSubmitting}
-													className="mb-2"
-												>
-													{isSubmitting ? (
-														<>
-															<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-															<span>Submitting...</span>
-														</>
-													) : (
-														"Next"
-													)}
-												</Button>
-												{showSuccessMessage && (
-													<span className="text-sm text-green-600">
-														Previous response recorded successfully
-													</span>
-												)}
-											</div>
-										</div>
+					<div className="flex-1">
+						{currentView === 'evaluation' && (
+							<div>
+								<div className="flex flex-col gap-4 mb-4">
+									<div className="flex justify-between items-center">
+										<h2 className="text-lg font-semibold text-muted-foreground">
+											Round {round} - Compare Dependencies
+										</h2>
 									</div>
+									<div className="flex items-baseline">
+										<p className="text-sm text-muted-foreground w-[600px]">
+											{`You've completed ${comparisons.length} ${
+												comparisons.length === 1 ? "comparison" : "comparisons"
+											}. All responses are automatically saved.`}
+											{round >= 2 && (
+												<>
+													<br />
+													You can finish now or continue with more comparisons. Use the
+													review button to check or edit your previous responses.
+												</>
+											)}
+										</p>
+									</div>
+								</div>
 
-									{error && (
-										<Alert variant="destructive">
-											<AlertDescription>{error}</AlertDescription>
-										</Alert>
-									)}
-								</CardContent>
-							</Card>
+								{showReviewPanel ? (
+									<ComparisonReviewPanel />
+								) : (
+									<div className="flex gap-12">
+										<Card className="w-[600px]">
+											<CardHeader>
+												<CardTitle className="flex justify-between items-center">
+													<span>
+														{isEditMode
+															? `Editing Round ${round} - Comparison ${
+																	comparisons
+																		.filter(c => c.round === round)
+																		.findIndex(
+																			c =>
+																				c.itemAIndex === seeds.indexOf(pairs[0][0]) &&
+																				c.itemBIndex === seeds.indexOf(pairs[0][1])
+																		) + 1
+																} of 5`
+															: `Comparison ${(currentPairIndex % 5) + 1} of 5`}
+													</span>
+													{!isEditMode && (
+														<Button
+															variant="secondary"
+															size="sm"
+															onClick={handleRefreshPairs}
+															disabled={isSubmitting}
+															className="bg-gray-100 hover:bg-gray-200"
+														>
+															<RefreshCw className="h-4 w-4 mr-2" />
+															Refresh Pairs
+														</Button>
+													)}
+												</CardTitle>
+											</CardHeader>
+											<CardContent className="space-y-6">
+												<div className="space-y-6">
+													<div className="space-y-4">
+														<p className="text-lg text-center">
+															Which dependency has been more valuable to the success of
+															Ethereum?
+														</p>
+														<div className="flex justify-center gap-4">
+															<Button
+																variant={selectedChoice === 1 ? "default" : "outline"}
+																onClick={() => handleChoiceSelect(1)}
+																className="flex-1 max-w-xs"
+																disabled={isSubmitting}
+															>
+																{formatRepoName(pairs[currentPairIndex][0])}
+															</Button>
+															<Button
+																variant={selectedChoice === 2 ? "default" : "outline"}
+																onClick={() => handleChoiceSelect(2)}
+																className="flex-1 max-w-xs"
+																disabled={isSubmitting}
+															>
+																{formatRepoName(pairs[currentPairIndex][1])}
+															</Button>
+														</div>
+													</div>
 
-							<div className="w-[400px] relative">
-								{showPreviousEvals && (
-									<Card>
-										<CardContent>
-											<PreviousComparisons
-												repoA={formatRepoName(pairs[currentPairIndex][0])}
-												repoB={formatRepoName(pairs[currentPairIndex][1])}
-												onPaginationChange={setPagination}
-											/>
-										</CardContent>
-									</Card>
-								)}
-								{!showReviewPanel && (
-									<div className="absolute bottom-0 right-0">
-										<Clippy
-											onTogglePreviousEvals={() => setShowPreviousEvals(!showPreviousEvals)}
-											showPreviousEvals={showPreviousEvals}
-										/>
+													<div className="space-y-4">
+														<div className="space-y-2">
+															<Label>Credit Multiplier</Label>
+															<p className="text-sm text-muted-foreground">
+																Enter how many times more credit the dependency you
+																choose deserves (1-999)
+															</p>
+															<div className="flex gap-4 items-center">
+																<Input
+																	type="number"
+																	value={multiplier}
+																	onChange={(e) => setMultiplier(e.target.value)}
+																	placeholder="Enter a number (1-999)"
+																	className="max-w-[200px]"
+																	min="1"
+																	max="999"
+																	step="0.01"
+																	disabled={isSubmitting}
+																/>
+															</div>
+														</div>
+
+														<div className="space-y-2">
+															<Label htmlFor="reasoning">Reasoning</Label>
+															<p className="text-sm text-muted-foreground">
+																Please explain your choice and the multiplier value
+																(~200 words)
+															</p>
+															<Textarea
+																id="reasoning"
+																value={reasoning}
+																onChange={(e) => setReasoning(e.target.value)}
+																className="h-32"
+																disabled={isSubmitting}
+															/>
+														</div>
+
+														<div className="flex flex-col items-center">
+															<Button
+																onClick={handleNext}
+																disabled={isSubmitting}
+																className="mb-2"
+															>
+																{isSubmitting ? (
+																	<>
+																		<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+																		<span>Submitting...</span>
+																	</>
+																) : (
+																	"Next"
+																)}
+															</Button>
+															{showSuccessMessage && (
+																<span className="text-sm text-green-600">
+																	Previous response recorded successfully
+																</span>
+															)}
+														</div>
+													</div>
+												</div>
+
+												{error && (
+													<Alert variant="destructive">
+														<AlertDescription>{error}</AlertDescription>
+													</Alert>
+												)}
+											</CardContent>
+										</Card>
+
+										<div className="w-[400px]">
+											<Card>
+												<CardContent>
+													<CurrentRoundEvaluations
+														repoA={formatRepoName(pairs[currentPairIndex][0])}
+														repoB={formatRepoName(pairs[currentPairIndex][1])}
+														evaluations={currentPairEvaluations[
+															`${formatRepoName(pairs[currentPairIndex][0])}-${formatRepoName(pairs[currentPairIndex][1])}`
+														]}
+													/>
+												</CardContent>
+											</Card>
+										</div>
 									</div>
 								)}
 							</div>
-						</div>
-					)}
+						)}
+
+						{currentView === 'review' && (
+							<div>
+								<h2 className="text-lg font-semibold text-muted-foreground mb-4">Review Your Evaluations</h2>
+								<ComparisonReviewPanel />
+							</div>
+						)}
+
+						{currentView === 'all-evaluations' && (
+							<div>
+								<div className="flex flex-col gap-4">
+									<div className="space-y-2">
+										<h2 className="text-lg font-semibold text-muted-foreground">All Previous Evaluations</h2>
+										<p className="text-sm text-muted-foreground">
+											{`Showing ${filteredEvaluations.length} of ${allEvaluations.length} total evaluations`}
+										</p>
+									</div>
+									
+									<Card>
+										<CardContent className="pt-6">
+											<div className="space-y-4">
+												<div className="space-y-2">
+													<Label>Filter by Project</Label>
+													<p className="text-sm text-muted-foreground">
+														Select a project to see all its comparisons with other projects
+													</p>
+													<select
+														className="w-[300px] p-2 border rounded"
+														onChange={(e) => setSelectedFilterRepo(e.target.value)}
+														value={selectedFilterRepo || ''}
+													>
+														<option value="">All Projects</option>
+														{seeds.map((repo, index) => (
+															<option key={index} value={formatRepoName(repo)}>
+																{formatRepoName(repo)}
+															</option>
+														))}
+													</select>
+												</div>
+
+												<AllEvaluationsList
+													comparisons={filteredEvaluations}
+													onPaginationChange={setPagination}
+													selectedFilterRepo={selectedFilterRepo}
+												/>
+											</div>
+										</CardContent>
+									</Card>
+								</div>
+							</div>
+						)}
+					</div>
 				</div>
 			)}
 
