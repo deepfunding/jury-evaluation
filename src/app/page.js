@@ -66,6 +66,11 @@ export default function Home() {
 	const [allEvaluations, setAllEvaluations] = useState([]);
 	const [currentPairEvaluations, setCurrentPairEvaluations] = useState({});
 
+	const [submissionStatus, setSubmissionStatus] = useState({
+		isSubmitting: false,
+		message: '',
+	});
+
 	const handleValidate = async (e) => {
 		e.preventDefault();
 		setError("");
@@ -157,6 +162,31 @@ export default function Home() {
 		setShowReviewPanel(false);
 	};
 
+	const handleViewChange = (view) => {
+		if (view === 'evaluation') {
+			// Ongoing 뷰로 전환할 때 필요한 상태 초기화
+			setShowReviewPanel(false);
+			
+			// 라운드의 마지막 항목이었다면 첫 번째 미완료 항목으로 이동
+			const currentRoundComparisons = comparisons.filter(c => c.round === round);
+			if (currentRoundComparisons.length === pairs.length) {
+				// 모든 비교가 완료된 상태라면 리뷰 패널 표시
+				setShowReviewPanel(true);
+			} else {
+				// 첫 번째 미완료 항목으로 이동
+				const nextIncompleteIndex = pairs.findIndex((pair, index) => {
+					return !currentRoundComparisons.some(
+						c => 
+							c.itemAIndex === seeds.indexOf(pair[0]) && 
+							c.itemBIndex === seeds.indexOf(pair[1])
+					);
+				});
+				setCurrentPairIndex(nextIncompleteIndex !== -1 ? nextIncompleteIndex : 0);
+			}
+		}
+		setCurrentView(view);
+	};
+
 	const handleNext = async () => {
 		if (!selectedChoice) {
 			setError("Please select a repository");
@@ -191,10 +221,39 @@ export default function Home() {
 			round: round,
 		};
 
-		try {
-			setIsSubmitting(true);
+		// Move to next comparison immediately
+		if (isEditMode) {
+			// Return to original state
+			setRound(originalRound);
+			setPairs(roundPairs[originalRound]);
+			setCurrentPairIndex(originalIndex);
+			setIsEditMode(false);
+			setOriginalRound(null);
+			setOriginalIndex(null);
+			setSelectedChoice(null);
+			setMultiplier("");
+			setReasoning("");
+			setCurrentView('review');
+		} else {
+			// If we've completed all comparisons in this round
+			if (currentPairIndex === pairs.length - 1) {
+				setShowReviewPanel(true);
+				setCurrentReviewRound(round);
+			} else {
+				// Move to next comparison
+				setCurrentPairIndex(currentPairIndex + 1);
+				setSelectedChoice(null);
+				setMultiplier("");
+				setReasoning("");
+			}
+		}
+		setError("");
 
-			// Find if there's an existing comparison for this round and index
+		// Start submission in background
+		setSubmissionStatus({ isSubmitting: true, message: 'Submitting response...' });
+
+		try {
+			// Find if there's an existing comparison
 			const existingIndex = comparisons.findIndex(
 				(c) =>
 					c.round === round &&
@@ -229,11 +288,9 @@ export default function Home() {
 			const newComparisonRowNumbers = [...comparisonRowNumbers];
 
 			if (existingIndex !== -1) {
-				// Update existing comparison
 				newComparisons[existingIndex] = newComparison;
 				newComparisonRowNumbers[existingIndex] = newRowNumber;
 			} else {
-				// Add new comparison
 				newComparisons.push(newComparison);
 				newComparisonRowNumbers.push(newRowNumber);
 			}
@@ -241,46 +298,24 @@ export default function Home() {
 			setComparisons(newComparisons);
 			setComparisonRowNumbers(newComparisonRowNumbers);
 
-			// Show success message temporarily
-			setShowSuccessMessage(true);
+			setSubmissionStatus({ isSubmitting: false, message: 'Response uploaded successfully!' });
+			
+			// Clear success message after delay
 			setTimeout(() => {
-				setShowSuccessMessage(false);
-			}, 2000);
+				setSubmissionStatus({ isSubmitting: false, message: '' });
+			}, 3000);
 
-			if (isEditMode) {
-				// After successful edit, return to original state
-				setRound(originalRound);
-				setPairs(roundPairs[originalRound]);
-				setCurrentPairIndex(originalIndex);
-				setIsEditMode(false);
-				setOriginalRound(null);
-				setOriginalIndex(null);
-				setSelectedChoice(null);
-				setMultiplier("");
-				setReasoning("");
-				// Change these lines to switch back to review view
-				setCurrentView('review');
-				return;
-			}
-
-			// If we've completed all comparisons in this round
-			if (currentPairIndex === pairs.length - 1) {
-				setShowReviewPanel(true);
-				setCurrentReviewRound(round);
-				return;
-			}
-
-			// Move to next comparison
-			setCurrentPairIndex(currentPairIndex + 1);
-			setSelectedChoice(null);
-			setMultiplier("");
-			setReasoning("");
-			setError("");
 		} catch (error) {
 			console.error("Submit error:", error);
-			setError(error.message || "Failed to submit comparison");
-		} finally {
-			setIsSubmitting(false);
+			setSubmissionStatus({ 
+				isSubmitting: false, 
+				message: 'Failed to submit response. Please try again.' 
+			});
+			
+			// Clear error message after delay
+			setTimeout(() => {
+				setSubmissionStatus({ isSubmitting: false, message: '' });
+			}, 3000);
 		}
 	};
 
@@ -596,6 +631,29 @@ export default function Home() {
 		}
 	}, [currentPairIndex, pairs, fetchPairEvaluations]);
 
+	const SubmissionStatus = () => {
+		if (!submissionStatus.message) return null;
+
+		return (
+			<div className="fixed bottom-4 right-4 p-4 rounded-md shadow-lg bg-white border">
+				<div className="flex items-center gap-2">
+					{submissionStatus.isSubmitting && (
+						<Loader2 className="h-4 w-4 animate-spin" />
+					)}
+					<span className={`text-sm ${
+						submissionStatus.isSubmitting 
+							? 'text-gray-600'
+							: submissionStatus.message.includes('successfully')
+								? 'text-green-600'
+								: 'text-red-600'
+					}`}>
+						{submissionStatus.message}
+					</span>
+				</div>
+			</div>
+		);
+	};
+
 	return (
 		<div className="container mx-auto p-8">
 			{!isValidated ? (
@@ -700,7 +758,7 @@ export default function Home() {
 								<Button
 									variant={currentView === 'evaluation' ? 'default' : 'outline'}
 									className="justify-start w-full"
-									onClick={() => setCurrentView('evaluation')}
+									onClick={() => handleViewChange('evaluation')}
 								>
 									<ScrollText className="mr-2 h-4 w-4" />
 									Ongoing
@@ -708,7 +766,7 @@ export default function Home() {
 								<Button
 									variant={currentView === 'review' ? 'default' : 'outline'}
 									className="justify-start w-full"
-									onClick={() => setCurrentView('review')}
+									onClick={() => handleViewChange('review')}
 								>
 									<ListChecks className="mr-2 h-4 w-4" />
 									Review
@@ -721,7 +779,7 @@ export default function Home() {
 							<Button
 								variant={currentView === 'all-evaluations' ? 'default' : 'outline'}
 								className="justify-start w-full"
-								onClick={() => setCurrentView('all-evaluations')}
+								onClick={() => handleViewChange('all-evaluations')}
 							>
 								<Users className="mr-2 h-4 w-4" />
 								Browse All
@@ -856,7 +914,7 @@ export default function Home() {
 															<Button
 																onClick={handleNext}
 																disabled={isSubmitting}
-																className="mb-2"
+																className="px-6 bg-green-600 hover:bg-green-700"
 															>
 																{isSubmitting ? (
 																	<>
@@ -986,6 +1044,7 @@ export default function Home() {
 					</div>
 				</DialogContent>
 			</Dialog>
+			<SubmissionStatus />
 		</div>
 	);
 }
