@@ -517,16 +517,16 @@ export default function Home() {
 											</p>
 										) : (
 											<>
-												<p className="text-sm text-muted-foreground">
-													{comparison.choice === 1
+												<span className="text-sm text-muted-foreground">
+													<span className="text-primary">{comparison.choice === 1
 														? comparison.itemAName
-														: comparison.itemBName}{" "}
-													is {comparison.multiplier}x more valuable to the success
+														: comparison.itemBName}</span> {" "}
+													is <span className="text-primary">{comparison.multiplier}x</span> more valuable to the success
 													of Ethereum than{" "}
-													{comparison.choice === 1
+													<span className="text-primary">{comparison.choice === 1
 														? comparison.itemBName
-														: comparison.itemAName}
-												</p>
+														: comparison.itemAName}</span>
+												</span>
 												<p className="text-sm">{comparison.reasoning}</p>
 											</>
 										)}
@@ -828,10 +828,10 @@ export default function Home() {
 										</h2>
 									</div>
 									<div className="flex items-baseline">
-										<p className="text-sm text-muted-foreground w-[600px]">
-											{`You've completed ${comparisons.length} ${
+										<span className="text-sm text-muted-foreground w-[600px]">
+											You've completed <span className="text-primary"> {`${comparisons.length}`} </span> {`${
 												comparisons.length === 1 ? "comparison" : "comparisons"
-											}. All responses are automatically saved.`}
+											}`}. All responses are automatically saved.
 											{round >= 2 && (
 												<>
 													<br />
@@ -839,7 +839,7 @@ export default function Home() {
 													review button to check or edit your previous responses.
 												</>
 											)}
-										</p>
+										</span>
 									</div>
 								</div>
 
@@ -1005,9 +1005,9 @@ export default function Home() {
 								<div className="flex flex-col gap-4">
 									<div className="space-y-2">
 										<h2 className="text-lg font-semibold text-muted-foreground">All Previous Evaluations</h2>
-										<p className="text-sm text-muted-foreground">
-											{`Showing ${filteredEvaluations.length} of ${allEvaluations.length} total evaluations`}
-										</p>
+										<span className="text-sm text-muted-foreground">
+											Showing <span className="text-primary">{`${filteredEvaluations.length}`} </span> of <span className="text-primary">{`${allEvaluations.length}`} </span> total evaluations
+										</span>
 									</div>
 									
 									<Card>
