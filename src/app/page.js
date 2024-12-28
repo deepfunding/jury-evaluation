@@ -22,15 +22,17 @@ import {
 	DialogTitle,
 	DialogDescription,
 } from "@/components/ui/dialog";
-import { MOCK_USER_DATA } from '@/data/mockData';
+import { MOCK_USER_DATA } from "@/data/mockData";
 import { ScrollText, ListChecks, Users } from "lucide-react";
 import { CurrentRoundEvaluations } from "@/components/CurrentRoundEvaluations";
 import { AllEvaluationsList } from "@/components/AllEvaluationsList";
 
-const isDev = process.env.NODE_ENV === 'development';
+const isDev = process.env.NODE_ENV === "development";
 
 export default function Home() {
-	const [inviteCode, setInviteCode] = useState(isDev ? MOCK_USER_DATA.inviteCode : "");
+	const [inviteCode, setInviteCode] = useState(
+		isDev ? MOCK_USER_DATA.inviteCode : "",
+	);
 	const [error, setError] = useState("");
 	const [isValidated, setIsValidated] = useState(false);
 	const [pairs, setPairs] = useState([]);
@@ -60,7 +62,7 @@ export default function Home() {
 	const [showSaveDialog, setShowSaveDialog] = useState(false);
 	const [isSaved, setIsSaved] = useState(false);
 	const [pagination, setPagination] = useState(null);
-	const [currentView, setCurrentView] = useState('evaluation');
+	const [currentView, setCurrentView] = useState("evaluation");
 	const [selectedFilterRepo, setSelectedFilterRepo] = useState(null);
 
 	const [allEvaluations, setAllEvaluations] = useState([]);
@@ -68,7 +70,7 @@ export default function Home() {
 
 	const [submissionStatus, setSubmissionStatus] = useState({
 		isSubmitting: false,
-		message: '',
+		message: "",
 	});
 
 	const [isTransitioning, setIsTransitioning] = useState(false);
@@ -133,16 +135,19 @@ export default function Home() {
 
 	const handleEditComparison = (index) => {
 		const comparison = comparisons[index];
-		
+
 		// 해당 라운드의 모든 비교 데이터 가져오기
-		const roundComparisons = comparisons.filter(c => c.round === comparison.round);
-		
+		const roundComparisons = comparisons.filter(
+			(c) => c.round === comparison.round,
+		);
+
 		// 현재 편집하려는 비교의 순서 찾기
-		const comparisonOrder = roundComparisons.findIndex(
-			c => 
-				c.itemAIndex === comparison.itemAIndex && 
-				c.itemBIndex === comparison.itemBIndex
-		) + 1;
+		const comparisonOrder =
+			roundComparisons.findIndex(
+				(c) =>
+					c.itemAIndex === comparison.itemAIndex &&
+					c.itemBIndex === comparison.itemBIndex,
+			) + 1;
 
 		// Store original state (한 번만 설정)
 		setOriginalRound(round);
@@ -169,14 +174,16 @@ export default function Home() {
 		setIsAllCompleted(false);
 		setIsEditMode(true);
 		setError("");
-		setCurrentView('evaluation');
+		setCurrentView("evaluation");
 	};
 
 	const handleViewChange = (view) => {
-		if (view === 'evaluation') {
+		if (view === "evaluation") {
 			// 현재 라운드의 완료된 비교 수를 확인
-			const currentRoundComparisons = comparisons.filter(c => c.round === round);
-			
+			const currentRoundComparisons = comparisons.filter(
+				(c) => c.round === round,
+			);
+
 			if (currentRoundComparisons.length === 5) {
 				// 현재 라운드가 완료된 상태
 				setShowReviewPanel(true);
@@ -184,16 +191,16 @@ export default function Home() {
 			} else {
 				// 현재 라운드가 진행 중인 상태
 				setShowReviewPanel(false);
-				
+
 				// 첫 번째 미완료 항목으로 이동
 				const nextIncompleteIndex = pairs.findIndex((pair, index) => {
 					return !currentRoundComparisons.some(
-						c => 
-							c.itemAIndex === seeds.indexOf(pair[0]) && 
-							c.itemBIndex === seeds.indexOf(pair[1])
+						(c) =>
+							c.itemAIndex === seeds.indexOf(pair[0]) &&
+							c.itemBIndex === seeds.indexOf(pair[1]),
 					);
 				});
-				
+
 				if (nextIncompleteIndex === -1) {
 					// 모든 비교가 완료된 경우 (이론적으로는 여기 올 수 없음)
 					setShowReviewPanel(true);
@@ -256,7 +263,7 @@ export default function Home() {
 				setSelectedChoice(null);
 				setMultiplier("");
 				setReasoning("");
-				setCurrentView('review');
+				setCurrentView("review");
 			} else {
 				// If we've completed all comparisons in this round
 				if (currentPairIndex === pairs.length - 1) {
@@ -275,7 +282,10 @@ export default function Home() {
 		}, 300);
 
 		// Start submission in background
-		setSubmissionStatus({ isSubmitting: true, message: 'Submitting response...' });
+		setSubmissionStatus({
+			isSubmitting: true,
+			message: "Submitting response...",
+		});
 
 		try {
 			// Find if there's an existing comparison
@@ -323,23 +333,25 @@ export default function Home() {
 			setComparisons(newComparisons);
 			setComparisonRowNumbers(newComparisonRowNumbers);
 
-			setSubmissionStatus({ isSubmitting: false, message: 'Response uploaded successfully!' });
-			
+			setSubmissionStatus({
+				isSubmitting: false,
+				message: "Response uploaded successfully!",
+			});
+
 			// Clear success message after delay
 			setTimeout(() => {
-				setSubmissionStatus({ isSubmitting: false, message: '' });
+				setSubmissionStatus({ isSubmitting: false, message: "" });
 			}, 3000);
-
 		} catch (error) {
 			console.error("Submit error:", error);
-			setSubmissionStatus({ 
-				isSubmitting: false, 
-				message: 'Failed to submit response. Please try again.' 
+			setSubmissionStatus({
+				isSubmitting: false,
+				message: "Failed to submit response. Please try again.",
 			});
-			
+
 			// Clear error message after delay
 			setTimeout(() => {
-				setSubmissionStatus({ isSubmitting: false, message: '' });
+				setSubmissionStatus({ isSubmitting: false, message: "" });
 			}, 3000);
 		}
 	};
@@ -411,7 +423,7 @@ export default function Home() {
 		const currentRoundPairs = roundPairs[currentReviewRound] || [];
 		const isCurrentRoundComplete = useMemo(() => {
 			const roundComparisons = comparisons.filter(
-				(comparison) => comparison.round === currentReviewRound
+				(comparison) => comparison.round === currentReviewRound,
 			);
 			return roundComparisons.length === 5;
 		}, [comparisons, currentReviewRound]);
@@ -465,7 +477,9 @@ export default function Home() {
 							</p>
 						</div>
 						<div className="flex justify-between items-center">
-							<h3 className="text-lg font-medium">Round {currentReviewRound}</h3>
+							<h3 className="text-lg font-medium">
+								Round {currentReviewRound}
+							</h3>
 						</div>
 						{currentReviewRound === round && (
 							<p className="text-sm text-muted-foreground">
@@ -487,7 +501,7 @@ export default function Home() {
 											Save Responses
 										</Button>
 									)}
-									{currentView === 'evaluation' && (
+									{currentView === "evaluation" && (
 										<Button
 											onClick={handleContinue}
 											className="px-8 bg-green-600 hover:bg-green-700"
@@ -496,7 +510,7 @@ export default function Home() {
 										</Button>
 									)}
 								</div>
-						)}
+							)}
 					</CardHeader>
 					<CardContent className="space-y-4">
 						{displayComparisons.map((comparison) => (
@@ -518,14 +532,21 @@ export default function Home() {
 										) : (
 											<>
 												<span className="text-sm text-muted-foreground">
-													<span className="text-primary">{comparison.choice === 1
-														? comparison.itemAName
-														: comparison.itemBName}</span> {" "}
-													is <span className="text-primary">{comparison.multiplier}x</span> more valuable to the success
-													of Ethereum than{" "}
-													<span className="text-primary">{comparison.choice === 1
-														? comparison.itemBName
-														: comparison.itemAName}</span>
+													<span className="text-primary">
+														{comparison.choice === 1
+															? comparison.itemAName
+															: comparison.itemBName}
+													</span>{" "}
+													is{" "}
+													<span className="text-primary">
+														{comparison.multiplier}x
+													</span>{" "}
+													more valuable to the success of Ethereum than{" "}
+													<span className="text-primary">
+														{comparison.choice === 1
+															? comparison.itemBName
+															: comparison.itemAName}
+													</span>
 												</span>
 												<p className="text-sm">{comparison.reasoning}</p>
 											</>
@@ -553,7 +574,7 @@ export default function Home() {
 											onClick={() => {
 												setShowReviewPanel(false);
 												setCurrentPairIndex(comparison.index);
-												setCurrentView('evaluation');
+												setCurrentView("evaluation");
 											}}
 										>
 											Continue
@@ -585,72 +606,76 @@ export default function Home() {
 
 	const fetchAllEvaluations = useCallback(async () => {
 		try {
-			const response = await fetch('/api/get-previous-comparisons', {
-				method: 'POST',
+			const response = await fetch("/api/get-previous-comparisons", {
+				method: "POST",
 				headers: {
-					'Content-Type': 'application/json',
+					"Content-Type": "application/json",
 				},
 				body: JSON.stringify({ repoA: null, repoB: null }),
 			});
 
 			if (!response.ok) {
-				throw new Error('Failed to fetch evaluations');
+				throw new Error("Failed to fetch evaluations");
 			}
 
 			const data = await response.json();
 			setAllEvaluations(data.comparisons);
 		} catch (error) {
-			console.error('Error fetching evaluations:', error);
+			console.error("Error fetching evaluations:", error);
 		}
 	}, []);
 
 	useEffect(() => {
-		if (currentView === 'all-evaluations' && allEvaluations.length === 0) {
+		if (currentView === "all-evaluations" && allEvaluations.length === 0) {
 			fetchAllEvaluations();
 		}
 	}, [currentView, allEvaluations.length, fetchAllEvaluations]);
 
 	const filteredEvaluations = useMemo(() => {
 		if (!selectedFilterRepo) return allEvaluations;
-		
-		return allEvaluations.filter(evaluation => 
-			evaluation.itemAName === selectedFilterRepo || 
-			evaluation.itemBName === selectedFilterRepo
+
+		return allEvaluations.filter(
+			(evaluation) =>
+				evaluation.itemAName === selectedFilterRepo ||
+				evaluation.itemBName === selectedFilterRepo,
 		);
 	}, [allEvaluations, selectedFilterRepo]);
 
 	// 현재 페어에 대한 평가 데이터 가져오기
-	const fetchPairEvaluations = useCallback(async (pairKey) => {
-		try {
-			const repoA = formatRepoName(pairs[currentPairIndex][0]);
-			const repoB = formatRepoName(pairs[currentPairIndex][1]);
-			
-			// 이미 캐시된 데이터가 있다면 사용
-			if (currentPairEvaluations[pairKey]) {
-				return;
+	const fetchPairEvaluations = useCallback(
+		async (pairKey) => {
+			try {
+				const repoA = formatRepoName(pairs[currentPairIndex][0]);
+				const repoB = formatRepoName(pairs[currentPairIndex][1]);
+
+				// 이미 캐시된 데이터가 있다면 사용
+				if (currentPairEvaluations[pairKey]) {
+					return;
+				}
+
+				const response = await fetch("/api/get-previous-comparisons", {
+					method: "POST",
+					headers: {
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify({ repoA, repoB }),
+				});
+
+				if (!response.ok) {
+					throw new Error("Failed to fetch evaluations");
+				}
+
+				const data = await response.json();
+				setCurrentPairEvaluations((prev) => ({
+					...prev,
+					[pairKey]: data.comparisons,
+				}));
+			} catch (error) {
+				console.error("Error fetching pair evaluations:", error);
 			}
-
-			const response = await fetch('/api/get-previous-comparisons', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-				},
-				body: JSON.stringify({ repoA, repoB }),
-			});
-
-			if (!response.ok) {
-				throw new Error('Failed to fetch evaluations');
-			}
-
-			const data = await response.json();
-			setCurrentPairEvaluations(prev => ({
-				...prev,
-				[pairKey]: data.comparisons
-			}));
-		} catch (error) {
-			console.error('Error fetching pair evaluations:', error);
-		}
-	}, [pairs, currentPairIndex, currentPairEvaluations]);
+		},
+		[pairs, currentPairIndex, currentPairEvaluations],
+	);
 
 	// 현재 페어가 변경될 때마다 데이터 가져오기
 	useEffect(() => {
@@ -671,13 +696,15 @@ export default function Home() {
 					{submissionStatus.isSubmitting && (
 						<Loader2 className="h-4 w-4 animate-spin" />
 					)}
-					<span className={`text-sm ${
-						submissionStatus.isSubmitting 
-							? 'text-gray-600'
-							: submissionStatus.message.includes('successfully')
-								? 'text-green-600'
-								: 'text-red-600'
-					}`}>
+					<span
+						className={`text-sm ${
+							submissionStatus.isSubmitting
+								? "text-gray-600"
+								: submissionStatus.message.includes("successfully")
+									? "text-green-600"
+									: "text-red-600"
+						}`}
+					>
 						{submissionStatus.message}
 					</span>
 				</div>
@@ -784,20 +811,22 @@ export default function Home() {
 				<div className="flex gap-8">
 					<div className="flex flex-col gap-6 w-[200px]">
 						<div className="space-y-2">
-							<h3 className="font-medium text-sm text-muted-foreground px-3">My Evaluation</h3>
+							<h3 className="font-medium text-sm text-muted-foreground px-3">
+								My Evaluation
+							</h3>
 							<div className="space-y-1">
 								<Button
-									variant={currentView === 'evaluation' ? 'default' : 'outline'}
+									variant={currentView === "evaluation" ? "default" : "outline"}
 									className="justify-start w-full"
-									onClick={() => handleViewChange('evaluation')}
+									onClick={() => handleViewChange("evaluation")}
 								>
 									<ScrollText className="mr-2 h-4 w-4" />
 									Ongoing
 								</Button>
 								<Button
-									variant={currentView === 'review' ? 'default' : 'outline'}
+									variant={currentView === "review" ? "default" : "outline"}
 									className="justify-start w-full"
-									onClick={() => handleViewChange('review')}
+									onClick={() => handleViewChange("review")}
 								>
 									<ListChecks className="mr-2 h-4 w-4" />
 									Review
@@ -806,11 +835,15 @@ export default function Home() {
 						</div>
 
 						<div className="space-y-2">
-							<h3 className="font-medium text-sm text-muted-foreground px-3">Others' Evaluations</h3>
+							<h3 className="font-medium text-sm text-muted-foreground px-3">
+								Others' Evaluations
+							</h3>
 							<Button
-								variant={currentView === 'all-evaluations' ? 'default' : 'outline'}
+								variant={
+									currentView === "all-evaluations" ? "default" : "outline"
+								}
 								className="justify-start w-full"
-								onClick={() => handleViewChange('all-evaluations')}
+								onClick={() => handleViewChange("all-evaluations")}
 							>
 								<Users className="mr-2 h-4 w-4" />
 								Browse All
@@ -819,7 +852,7 @@ export default function Home() {
 					</div>
 
 					<div className="flex-1">
-						{currentView === 'evaluation' && (
+						{currentView === "evaluation" && (
 							<div>
 								<div className="flex flex-col gap-4 mb-4">
 									<div className="flex justify-between items-center">
@@ -829,14 +862,21 @@ export default function Home() {
 									</div>
 									<div className="flex items-baseline">
 										<span className="text-sm text-muted-foreground w-[600px]">
-											You've completed <span className="text-primary"> {`${comparisons.length}`} </span> {`${
+											You've completed{" "}
+											<span className="text-primary">
+												{" "}
+												{`${comparisons.length}`}{" "}
+											</span>{" "}
+											{`${
 												comparisons.length === 1 ? "comparison" : "comparisons"
-											}`}. All responses are automatically saved.
+											}`}
+											. All responses are automatically saved.
 											{round >= 2 && (
 												<>
 													<br />
-													You can finish now or continue with more comparisons. Use the
-													review button to check or edit your previous responses.
+													You can finish now or continue with more comparisons.
+													Use the review button to check or edit your previous
+													responses.
 												</>
 											)}
 										</span>
@@ -847,20 +887,24 @@ export default function Home() {
 									<ComparisonReviewPanel />
 								) : (
 									<div className="flex gap-12">
-										<Card className={`w-[600px] transition-opacity duration-150 ${
-											isTransitioning ? 'opacity-60' : 'opacity-100'
-										}`}>
+										<Card
+											className={`w-[600px] transition-opacity duration-150 ${
+												isTransitioning ? "opacity-60" : "opacity-100"
+											}`}
+										>
 											<CardHeader>
 												<CardTitle className="flex justify-between items-center">
 													<span>
 														{isEditMode
 															? `Editing Round ${round} - Comparison ${
 																	comparisons
-																		.filter(c => c.round === round)
+																		.filter((c) => c.round === round)
 																		.findIndex(
-																			c =>
-																				c.itemAIndex === seeds.indexOf(pairs[0][0]) &&
-																				c.itemBIndex === seeds.indexOf(pairs[0][1])
+																			(c) =>
+																				c.itemAIndex ===
+																					seeds.indexOf(pairs[0][0]) &&
+																				c.itemBIndex ===
+																					seeds.indexOf(pairs[0][1]),
 																		) + 1
 																} of 5`
 															: `Comparison ${(currentPairIndex % 5) + 1} of 5`}
@@ -883,12 +927,14 @@ export default function Home() {
 												<div className="space-y-6">
 													<div className="space-y-4">
 														<p className="text-lg text-center">
-															Which dependency has been more valuable to the success of
-															Ethereum?
+															Which dependency has been more valuable to the
+															success of Ethereum?
 														</p>
 														<div className="flex justify-center gap-4">
 															<Button
-																variant={selectedChoice === 1 ? "default" : "outline"}
+																variant={
+																	selectedChoice === 1 ? "default" : "outline"
+																}
 																onClick={() => handleChoiceSelect(1)}
 																className="flex-1 max-w-xs"
 																disabled={isSubmitting}
@@ -896,7 +942,9 @@ export default function Home() {
 																{formatRepoName(pairs[currentPairIndex][0])}
 															</Button>
 															<Button
-																variant={selectedChoice === 2 ? "default" : "outline"}
+																variant={
+																	selectedChoice === 2 ? "default" : "outline"
+																}
 																onClick={() => handleChoiceSelect(2)}
 																className="flex-1 max-w-xs"
 																disabled={isSubmitting}
@@ -910,14 +958,16 @@ export default function Home() {
 														<div className="space-y-2">
 															<Label>Credit Multiplier</Label>
 															<p className="text-sm text-muted-foreground">
-																Enter how many times more credit the dependency you
-																choose deserves (1-999)
+																Enter how many times more credit the dependency
+																you choose deserves (1-999)
 															</p>
 															<div className="flex gap-4 items-center">
 																<Input
 																	type="number"
 																	value={multiplier}
-																	onChange={(e) => setMultiplier(e.target.value)}
+																	onChange={(e) =>
+																		setMultiplier(e.target.value)
+																	}
 																	placeholder="Enter a number (1-999)"
 																	className="max-w-[200px]"
 																	min="1"
@@ -931,8 +981,8 @@ export default function Home() {
 														<div className="space-y-2">
 															<Label htmlFor="reasoning">Reasoning</Label>
 															<p className="text-sm text-muted-foreground">
-																Please explain your choice and the multiplier value
-																(~200 words)
+																Please explain your choice and the multiplier
+																value (~200 words)
 															</p>
 															<Textarea
 																id="reasoning"
@@ -981,9 +1031,11 @@ export default function Home() {
 													<CurrentRoundEvaluations
 														repoA={formatRepoName(pairs[currentPairIndex][0])}
 														repoB={formatRepoName(pairs[currentPairIndex][1])}
-														evaluations={currentPairEvaluations[
-															`${formatRepoName(pairs[currentPairIndex][0])}-${formatRepoName(pairs[currentPairIndex][1])}`
-														]}
+														evaluations={
+															currentPairEvaluations[
+																`${formatRepoName(pairs[currentPairIndex][0])}-${formatRepoName(pairs[currentPairIndex][1])}`
+															]
+														}
 													/>
 												</CardContent>
 											</Card>
@@ -993,35 +1045,50 @@ export default function Home() {
 							</div>
 						)}
 
-						{currentView === 'review' && (
+						{currentView === "review" && (
 							<div>
-								<h2 className="text-lg font-semibold text-muted-foreground mb-4">Review Your Evaluations</h2>
+								<h2 className="text-lg font-semibold text-muted-foreground mb-4">
+									Review Your Evaluations
+								</h2>
 								<ComparisonReviewPanel />
 							</div>
 						)}
 
-						{currentView === 'all-evaluations' && (
+						{currentView === "all-evaluations" && (
 							<div>
 								<div className="flex flex-col gap-4">
 									<div className="space-y-2">
-										<h2 className="text-lg font-semibold text-muted-foreground">All Previous Evaluations</h2>
+										<h2 className="text-lg font-semibold text-muted-foreground">
+											All Previous Evaluations
+										</h2>
 										<span className="text-sm text-muted-foreground">
-											Showing <span className="text-primary">{`${filteredEvaluations.length}`} </span> of <span className="text-primary">{`${allEvaluations.length}`} </span> total evaluations
+											Showing{" "}
+											<span className="text-primary">
+												{`${filteredEvaluations.length}`}{" "}
+											</span>{" "}
+											of{" "}
+											<span className="text-primary">
+												{`${allEvaluations.length}`}{" "}
+											</span>{" "}
+											total evaluations
 										</span>
 									</div>
-									
+
 									<Card>
 										<CardContent className="pt-6">
 											<div className="space-y-4">
 												<div className="space-y-2">
 													<Label>Filter by Project</Label>
 													<p className="text-sm text-muted-foreground">
-														Select a project to see all its comparisons with other projects
+														Select a project to see all its comparisons with
+														other projects
 													</p>
 													<select
 														className="w-[300px] p-2 border rounded"
-														onChange={(e) => setSelectedFilterRepo(e.target.value)}
-														value={selectedFilterRepo || ''}
+														onChange={(e) =>
+															setSelectedFilterRepo(e.target.value)
+														}
+														value={selectedFilterRepo || ""}
 													>
 														<option value="">All Projects</option>
 														{seeds.map((repo, index) => (

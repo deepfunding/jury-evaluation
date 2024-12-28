@@ -33,7 +33,9 @@ export class GoogleSheetsService {
 			.replace(/\s/g, "");
 
 		// Decode base64 to binary
-		const binaryKey = Uint8Array.from(atob(pemContents), (c) => c.charCodeAt(0));
+		const binaryKey = Uint8Array.from(atob(pemContents), (c) =>
+			c.charCodeAt(0),
+		);
 
 		// Import the key
 		const privateKey = await crypto.subtle.importKey(
@@ -79,12 +81,12 @@ export class GoogleSheetsService {
 
 			// Get values from the 'juros' sheet, columns D and E
 			const response = await fetch(
-					`https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEET_ID}/values/juros!D:E`,
-					{
-						headers: {
-							Authorization: `Bearer ${accessToken}`,
-						},
+				`https://sheets.googleapis.com/v4/spreadsheets/${GOOGLE_SHEET_ID}/values/juros!D:E`,
+				{
+					headers: {
+						Authorization: `Bearer ${accessToken}`,
 					},
+				},
 			);
 
 			if (!response.ok) {
@@ -289,11 +291,11 @@ export class GoogleSheetsService {
 					headers: {
 						Authorization: `Bearer ${await this.getAccessToken()}`,
 					},
-				}
+				},
 			);
 
 			if (!response.ok) {
-				throw new Error('Failed to fetch responses from Google Sheets');
+				throw new Error("Failed to fetch responses from Google Sheets");
 			}
 
 			const { values } = await response.json();
@@ -301,7 +303,7 @@ export class GoogleSheetsService {
 
 			return this._mapResponseToComparisons(values);
 		} catch (error) {
-			console.error('Error fetching all comparisons:', error);
+			console.error("Error fetching all comparisons:", error);
 			throw error;
 		}
 	}
@@ -309,37 +311,40 @@ export class GoogleSheetsService {
 	async getPreviousComparisons(repoA, repoB) {
 		try {
 			const allComparisons = await this.getAllComparisons();
-			
+
 			// repoA와 repoB가 모두 있는 경우에만 해당 페어의 비교 결과를 반환
 			if (repoA && repoB) {
-				return allComparisons.filter(comparison => 
-					(comparison.itemAName === repoA && comparison.itemBName === repoB) ||
-					(comparison.itemAName === repoB && comparison.itemBName === repoA)
+				return allComparisons.filter(
+					(comparison) =>
+						(comparison.itemAName === repoA &&
+							comparison.itemBName === repoB) ||
+						(comparison.itemAName === repoB && comparison.itemBName === repoA),
 				);
 			}
-			
+
 			// repoA만 있는 경우 해당 프로젝트가 포함된 모든 비교 결과를 반환
 			if (repoA) {
-				return allComparisons.filter(comparison => 
-					comparison.itemAName === repoA || comparison.itemBName === repoA
+				return allComparisons.filter(
+					(comparison) =>
+						comparison.itemAName === repoA || comparison.itemBName === repoA,
 				);
 			}
-			
+
 			// 필터가 없는 경우 모든 비교 결과를 반��
 			return allComparisons;
 		} catch (error) {
-			console.error('Error fetching previous comparisons:', error);
+			console.error("Error fetching previous comparisons:", error);
 			throw error;
 		}
 	}
 
 	_mapResponseToComparisons(values) {
-		return values.map(row => ({
-			itemAName: row[0],     // G열 - 프로젝트 A 이름
-			itemBName: row[1],     // H열 - 프로젝트 B 이름
-			choice: row[2],        // I열 - 선택 (A or B)
+		return values.map((row) => ({
+			itemAName: row[0], // G열 - 프로젝트 A 이름
+			itemBName: row[1], // H열 - 프로젝트 B 이름
+			choice: row[2], // I열 - 선택 (A or B)
 			multiplier: parseFloat(row[3]), // J열 - 배수
-			reasoning: row[5]      // L열 - 이유
+			reasoning: row[5], // L열 - 이유
 		}));
 	}
 }
