@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { getComparisonResult } from '@/utils/comparisonUtils';
 
 const ITEMS_PER_PAGE = 5;
 
@@ -108,11 +109,8 @@ export function AllEvaluationsList({
 		<div className="space-y-4">
 			<div className="flex-1 space-y-3">
 				{currentComparisons.map((comparison, index) => {
-					const chosenProject =
-						comparison.choice === 1
-							? comparison.itemAName
-							: comparison.itemBName;
-					const multiplier = comparison.multiplier;
+					const { moreValuableProject, lessValuableProject, multiplier } = 
+						getComparisonResult(comparison);
 
 					return (
 						<Card key={index} className="bg-muted/50">
@@ -129,17 +127,13 @@ export function AllEvaluationsList({
 									</div>
 
 									<div className="text-sm flex items-center gap-1">
-										<span className="text-primary">{chosenProject}</span>
+										<span className="text-primary">{moreValuableProject}</span>
 										<span className="text-muted-foreground">rated</span>
 										<span className="text-primary">{multiplier}x</span>
 										<span className="text-muted-foreground ml-1">
 											more valuable than
 										</span>
-										<span className="text-primary ml-1">
-											{comparison.choice === 1
-												? comparison.itemBName
-												: comparison.itemAName}
-										</span>
+										<span className="text-primary ml-1">{lessValuableProject}</span>
 									</div>
 
 									<div className="space-y-1.5">
