@@ -44,16 +44,11 @@ export function CurrentRoundEvaluations({ repoA, repoB, evaluations }) {
 
 	return (
 		<div className="space-y-6">
-			<CardHeader className="px-0 pt-0">
-				<CardTitle className="text-lg font-medium text-muted-foreground">
-					Other Evaluators' Insights
-				</CardTitle>
-				<p className="text-sm text-muted-foreground mt-1">
-					{comparisons.length === 0
-						? "No previous evaluations for this pair yet"
-						: `${comparisons.length} evaluation${comparisons.length === 1 ? "" : "s"} found`}
-				</p>
-			</CardHeader>
+			<p className="text-sm text-muted-foreground">
+				{comparisons.length === 0
+					? "No previous evaluations for this pair yet"
+					: `${comparisons.length} evaluation${comparisons.length === 1 ? "" : "s"} found`}
+			</p>
 
 			{comparisons.length > 0 && (
 				<div className="space-y-4">

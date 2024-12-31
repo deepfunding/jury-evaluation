@@ -14,7 +14,7 @@ import {
 import { seeds } from "@/data/seed";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2 } from "lucide-react";
-import { ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
+import { ChevronLeft, ChevronRight, RefreshCw, ChevronDown, ChevronUp } from "lucide-react";
 import {
 	Dialog,
 	DialogContent,
@@ -26,6 +26,7 @@ import { MOCK_USER_DATA } from "@/data/mockData";
 import { ScrollText, ListChecks, Users } from "lucide-react";
 import { CurrentRoundEvaluations } from "@/components/CurrentRoundEvaluations";
 import { AllEvaluationsList } from "@/components/AllEvaluationsList";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const isDev = process.env.NODE_ENV === "development";
 
@@ -74,6 +75,8 @@ export default function Home() {
 	});
 
 	const [isTransitioning, setIsTransitioning] = useState(false);
+
+	const [showEvaluations, setShowEvaluations] = useState(false);
 
 	const handleValidate = async (e) => {
 		e.preventDefault();
@@ -265,7 +268,7 @@ export default function Home() {
 				setReasoning("");
 				setCurrentView("review");
 			} else {
-				// If we've completed all comparisons in this round
+				// Move to next comparison
 				if (currentPairIndex === pairs.length - 1) {
 					setShowReviewPanel(true);
 					setCurrentReviewRound(round);
@@ -277,6 +280,8 @@ export default function Home() {
 					setReasoning("");
 				}
 			}
+			// Reset evaluations panel to collapsed state
+			setShowEvaluations(false);
 			setError("");
 			setIsTransitioning(false);
 		}, 300);
@@ -1027,17 +1032,61 @@ export default function Home() {
 
 										<div className="w-[400px]">
 											<Card>
-												<CardContent>
-													<CurrentRoundEvaluations
-														repoA={formatRepoName(pairs[currentPairIndex][0])}
-														repoB={formatRepoName(pairs[currentPairIndex][1])}
-														evaluations={
-															currentPairEvaluations[
-																`${formatRepoName(pairs[currentPairIndex][0])}-${formatRepoName(pairs[currentPairIndex][1])}`
-															]
-														}
-													/>
-												</CardContent>
+												<CardHeader className="pb-3">
+													<TooltipProvider>
+														<Tooltip>
+															<TooltipTrigger asChild>
+																<div>
+																	<Button
+																		variant="outline"
+																		className={`w-full flex justify-between items-center ${
+																			currentPairEvaluations[
+																				`${formatRepoName(pairs[currentPairIndex][0])}-${formatRepoName(pairs[currentPairIndex][1])}`
+																			]?.length 
+																				? "bg-blue-50 hover:bg-blue-100 border-blue-200" 
+																				: ""
+																		}`}
+																		onClick={() => setShowEvaluations(!showEvaluations)}
+																		disabled={!currentPairEvaluations[
+																			`${formatRepoName(pairs[currentPairIndex][0])}-${formatRepoName(pairs[currentPairIndex][1])}`
+																		]?.length}
+																	>
+																		<div className="flex items-center gap-2">
+																			<Users className="h-4 w-4" />
+																			<span>View Other Evaluations</span>
+																		</div>
+																		{showEvaluations ? (
+																			<ChevronUp className="h-4 w-4" />
+																		) : (
+																			<ChevronDown className="h-4 w-4" />
+																		)}
+																	</Button>
+																</div>
+															</TooltipTrigger>
+															<TooltipContent>
+																{!currentPairEvaluations[
+																	`${formatRepoName(pairs[currentPairIndex][0])}-${formatRepoName(pairs[currentPairIndex][1])}`
+																]?.length 
+																	? "No evaluations available for this pair yet"
+																	: "Click to view other evaluations"
+																}
+															</TooltipContent>
+														</Tooltip>
+													</TooltipProvider>
+												</CardHeader>
+												{showEvaluations && (
+													<CardContent>
+														<CurrentRoundEvaluations
+															repoA={formatRepoName(pairs[currentPairIndex][0])}
+															repoB={formatRepoName(pairs[currentPairIndex][1])}
+															evaluations={
+																currentPairEvaluations[
+																	`${formatRepoName(pairs[currentPairIndex][0])}-${formatRepoName(pairs[currentPairIndex][1])}`
+																]
+															}
+														/>
+													</CardContent>
+												)}
 											</Card>
 										</div>
 									</div>
