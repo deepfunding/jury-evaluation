@@ -251,45 +251,6 @@ export default function Home() {
 			round: round,
 		};
 
-		// Add transition effect
-		setIsTransitioning(true);
-		setTimeout(() => {
-			// Move to next comparison immediately
-			if (isEditMode) {
-				// Return to original state
-				setRound(originalRound);
-				setPairs(roundPairs[originalRound]);
-				setCurrentPairIndex(originalIndex);
-				setIsEditMode(false);
-				setOriginalRound(null);
-				setOriginalIndex(null);
-				setSelectedChoice(null);
-				setMultiplier("");
-				setReasoning("");
-				setCurrentView("review");
-			} else {
-				// Move to next comparison
-				const currentRoundComparisons = comparisons.filter(
-					(c) => c.round === round
-				);
-				
-				if (currentRoundComparisons.length >= 4) {
-					setShowReviewPanel(true);
-					setCurrentReviewRound(round);
-				} else {
-					// Move to next comparison
-					setCurrentPairIndex(currentPairIndex + 1);
-					setSelectedChoice(null);
-					setMultiplier("");
-					setReasoning("");
-				}
-			}
-			// Reset evaluations panel to collapsed state
-			setShowEvaluations(false);
-			setError("");
-			setIsTransitioning(false);
-		}, 300);
-
 		// Start submission in background
 		setSubmissionStatus({
 			isSubmitting: true,
@@ -307,6 +268,59 @@ export default function Home() {
 
 			const existingRowNumber =
 				existingIndex !== -1 ? comparisonRowNumbers[existingIndex] : undefined;
+
+			// Update local state immediately
+			const newComparisons = [...comparisons];
+			const newComparisonRowNumbers = [...comparisonRowNumbers];
+
+			if (existingIndex !== -1) {
+				newComparisons[existingIndex] = newComparison;
+			} else {
+				newComparisons.push(newComparison);
+				newComparisonRowNumbers.push(null); // Will be updated after API response
+			}
+
+			setComparisons(newComparisons);
+			setComparisonRowNumbers(newComparisonRowNumbers);
+
+			// Add transition effect
+			setIsTransitioning(true);
+
+			// Update UI state immediately
+			if (isEditMode) {
+				setRound(originalRound);
+				setPairs(roundPairs[originalRound]);
+				setCurrentPairIndex(originalIndex);
+				setIsEditMode(false);
+				setOriginalRound(null);
+				setOriginalIndex(null);
+				setSelectedChoice(null);
+				setMultiplier("");
+				setReasoning("");
+				setCurrentView("review");
+			} else {
+				const currentRoundComparisons = newComparisons.filter(
+					(c) => c.round === round
+				);
+				
+				if (currentRoundComparisons.length >= 4) {
+					setShowReviewPanel(true);
+					setCurrentReviewRound(round);
+				} else {
+					setCurrentPairIndex(currentPairIndex + 1);
+					setSelectedChoice(null);
+					setMultiplier("");
+					setReasoning("");
+				}
+			}
+
+			// Reset evaluations panel
+			setShowEvaluations(false);
+			setError("");
+
+			setTimeout(() => {
+				setIsTransitioning(false);
+			}, 300);
 
 			const response = await fetch("/api/submit-comparison", {
 				method: "POST",
@@ -328,26 +342,20 @@ export default function Home() {
 			const responseData = await response.json();
 			const newRowNumber = responseData.rowNumber;
 
-			const newComparisons = [...comparisons];
-			const newComparisonRowNumbers = [...comparisonRowNumbers];
-
+			// Update row numbers after successful submission
+			const finalComparisonRowNumbers = [...newComparisonRowNumbers];
 			if (existingIndex !== -1) {
-				newComparisons[existingIndex] = newComparison;
-				newComparisonRowNumbers[existingIndex] = newRowNumber;
+				finalComparisonRowNumbers[existingIndex] = newRowNumber;
 			} else {
-				newComparisons.push(newComparison);
-				newComparisonRowNumbers.push(newRowNumber);
+				finalComparisonRowNumbers[finalComparisonRowNumbers.length - 1] = newRowNumber;
 			}
-
-			setComparisons(newComparisons);
-			setComparisonRowNumbers(newComparisonRowNumbers);
+			setComparisonRowNumbers(finalComparisonRowNumbers);
 
 			setSubmissionStatus({
 				isSubmitting: false,
 				message: "Response uploaded successfully!",
 			});
 
-			// Clear success message after delay
 			setTimeout(() => {
 				setSubmissionStatus({ isSubmitting: false, message: "" });
 			}, 3000);
@@ -358,7 +366,6 @@ export default function Home() {
 				message: "Failed to submit response. Please try again.",
 			});
 
-			// Clear error message after delay
 			setTimeout(() => {
 				setSubmissionStatus({ isSubmitting: false, message: "" });
 			}, 3000);
