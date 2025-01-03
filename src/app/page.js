@@ -223,7 +223,7 @@ export default function Home() {
 		}
 
 		if (!isValidMultiplier(multiplier)) {
-			setError("Please enter a valid multiplier between 1 and 10");
+			setError("Please enter a valid multiplier between 1 and 999");
 			return;
 		}
 
@@ -246,7 +246,7 @@ export default function Home() {
 			itemBName: formatRepoName(currentPair[1]),
 			choice,
 			multiplier: multiplierValue,
-			logMultiplier: logMultiplierValue,
+			logMultiplier: logMultiplierVfalue,
 			reasoning: reasoning.trim(),
 			round: round,
 		};
@@ -269,7 +269,11 @@ export default function Home() {
 				setCurrentView("review");
 			} else {
 				// Move to next comparison
-				if (currentPairIndex === pairs.length - 1) {
+				const currentRoundComparisons = comparisons.filter(
+					(c) => c.round === round
+				);
+				
+				if (currentRoundComparisons.length >= 4) {
 					setShowReviewPanel(true);
 					setCurrentReviewRound(round);
 				} else {
@@ -717,6 +721,13 @@ export default function Home() {
 		);
 	};
 
+	const getCurrentComparisonNumber = () => {
+		const currentRoundComparisons = comparisons.filter(
+			(c) => c.round === round
+		);
+		return currentRoundComparisons.length + 1;
+	};
+
 	return (
 		<div className="container mx-auto p-8">
 			{!isValidated ? (
@@ -880,8 +891,8 @@ export default function Home() {
 												<>
 													<br />
 													You can finish now or continue with more comparisons.
-													Use the review button to check or edit your previous
-													responses.
+														Use the review button to check or edit your previous
+														responses.
 												</>
 											)}
 										</span>
@@ -912,7 +923,7 @@ export default function Home() {
 																					seeds.indexOf(pairs[0][1]),
 																		) + 1
 																} of 5`
-															: `Comparison ${(currentPairIndex % 5) + 1} of 5`}
+															: `Comparison ${getCurrentComparisonNumber()} of 5`}
 													</span>
 													{!isEditMode && (
 														<Button
