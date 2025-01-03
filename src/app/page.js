@@ -246,7 +246,7 @@ export default function Home() {
 			itemBName: formatRepoName(currentPair[1]),
 			choice,
 			multiplier: multiplierValue,
-			logMultiplier: logMultiplierVfalue,
+			logMultiplier: logMultiplierValue,
 			reasoning: reasoning.trim(),
 			round: round,
 		};
