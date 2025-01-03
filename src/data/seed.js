@@ -1,4 +1,4 @@
-// src: https://github.com/deepfunding/dependency-graph/blob/6d2c35db6099ced8d602bf90e65dbbc78449c634/datasets/pairwise/get1stLevelCategoryList.json
+// src: https://github.com/deepfunding/dependency-graph/blob/acf3ee981ad382fde921e64c027f8b9cfe1343d8/datasets/pairwise/get1stLevelCategoryList.json
 
 export const seeds = [
 	"https://github.com/ethereum/solidity",

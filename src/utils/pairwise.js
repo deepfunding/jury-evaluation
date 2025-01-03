@@ -1,21 +1,46 @@
 /**
+ * Gets a cryptographically secure random number between 0 and 1
+ * @private
+ */
+function getSecureRandom() {
+	const array = new Uint32Array(1);
+	crypto.getRandomValues(array);
+	return array[0] / (0xffffffff + 1);
+}
+
+/**
+ * Generates a random pair of different indices
+ * @private
+ * @param {number} range - The range of valid indices
+ * @returns {[number, number]} A pair of different random indices
+ */
+function generateRandomPair(range) {
+	const firstIndex = Math.floor(getSecureRandom() * range);
+	let secondIndex;
+	do {
+		secondIndex = Math.floor(getSecureRandom() * range);
+	} while (secondIndex === firstIndex);
+	return [firstIndex, secondIndex];
+}
+
+/**
  * Generates random pairs from an array of items for pairwise comparison
  * @param {Array} items - Array of items to compare
  * @param {number} numComparisons - Number of comparisons to generate
  * @returns {Array} Array of pairs, each containing [itemA, itemB]
  */
 export function generatePairs(items, numComparisons = 3) {
+	if (items.length < 2) {
+		throw new Error("Need at least 2 items to generate pairs");
+	}
+
 	const pairs = [];
 	const itemCount = items.length;
 
 	while (pairs.length < numComparisons) {
-		// Get two random indices
-		const indexA = Math.floor(Math.random() * itemCount);
-		let indexB = Math.floor(Math.random() * (itemCount - 1));
-
-		// Adjust indexB to avoid same index
-		if (indexB >= indexA) indexB += 1;
-
+		// Generate a random pair of indices
+		const [indexA, indexB] = generateRandomPair(itemCount);
+		
 		// Get the actual items
 		const itemA = items[indexA];
 		const itemB = items[indexB];
