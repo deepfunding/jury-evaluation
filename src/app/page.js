@@ -287,7 +287,15 @@ export default function Home() {
 			setIsTransitioning(true);
 
 			// Update UI state immediately
-			if (isEditMode) {
+			const currentRoundComparisons = newComparisons.filter(
+				(c) => c.round === round
+			);
+			
+			if (currentRoundComparisons.length === 5) {
+        setIsEditMode(false);
+				setShowReviewPanel(true);
+				setCurrentReviewRound(round);
+			} else if (isEditMode) {
 				setRound(originalRound);
 				setPairs(roundPairs[originalRound]);
 				setCurrentPairIndex(originalIndex);
@@ -297,21 +305,11 @@ export default function Home() {
 				setSelectedChoice(null);
 				setMultiplier("");
 				setReasoning("");
-				setCurrentView("review");
 			} else {
-				const currentRoundComparisons = newComparisons.filter(
-					(c) => c.round === round
-				);
-				
-				if (currentRoundComparisons.length >= 4) {
-					setShowReviewPanel(true);
-					setCurrentReviewRound(round);
-				} else {
-					setCurrentPairIndex(currentPairIndex + 1);
-					setSelectedChoice(null);
-					setMultiplier("");
-					setReasoning("");
-				}
+				setCurrentPairIndex(currentPairIndex + 1);
+				setSelectedChoice(null);
+				setMultiplier("");
+				setReasoning("");
 			}
 
 			// Reset evaluations panel
@@ -850,6 +848,7 @@ export default function Home() {
 									variant={currentView === "review" ? "default" : "outline"}
 									className="justify-start w-full"
 									onClick={() => handleViewChange("review")}
+									disabled={comparisons.filter((c) => c.round === round).length === 5}
 								>
 									<ListChecks className="mr-2 h-4 w-4" />
 									Review
@@ -949,93 +948,116 @@ export default function Home() {
 											<CardContent className="space-y-6">
 												<div className="space-y-6">
 													<div className="space-y-4">
-														<p className="text-lg text-center">
+														<p className="text-lg text-center mb-8">
 															Which dependency has been more valuable to the
 															success of Ethereum?
 														</p>
-														<div className="flex justify-center gap-4">
-															<Button
-																variant={
-																	selectedChoice === 1 ? "default" : "outline"
-																}
-																onClick={() => handleChoiceSelect(1)}
-																className="flex-1 max-w-xs"
-																disabled={isSubmitting}
-															>
-																{formatRepoName(pairs[currentPairIndex][0])}
-															</Button>
-															<Button
-																variant={
-																	selectedChoice === 2 ? "default" : "outline"
-																}
-																onClick={() => handleChoiceSelect(2)}
-																className="flex-1 max-w-xs"
-																disabled={isSubmitting}
-															>
-																{formatRepoName(pairs[currentPairIndex][1])}
-															</Button>
+														<div className="grid grid-cols-2 gap-8">
+															{[0, 1].map((index) => (
+																<div 
+																	key={index}
+																	className={`relative transition-all duration-200 ${
+																		selectedChoice === index + 1 
+																			? 'ring-2 ring-primary ring-offset-2' 
+																			: 'hover:shadow-md'
+																	}`}
+																>
+																	<div className="p-6 rounded-lg border bg-card">
+																		<div className="space-y-4">
+																			<div className="flex items-center justify-center">
+																				<TooltipProvider>
+																					<Tooltip>
+																						<TooltipTrigger asChild>
+																							<a
+																								href={pairs[currentPairIndex][index]}
+																								target="_blank"
+																								rel="noopener noreferrer"
+																								className="text-xl font-medium text-primary hover:underline text-center"
+																							>
+																								{formatRepoName(pairs[currentPairIndex][index])}
+																							</a>
+																						</TooltipTrigger>
+																						<TooltipContent>
+																							<span>Click to open GitHub repository in a new tab</span>
+																						</TooltipContent>
+																					</Tooltip>
+																				</TooltipProvider>
+																			</div>
+																			<Button
+																				variant={selectedChoice === index + 1 ? "default" : "outline"}
+																				onClick={() => handleChoiceSelect(index + 1)}
+																				className="w-full mt-4"
+																				disabled={isSubmitting}
+																			>
+																				{selectedChoice === index + 1 ? "Selected" : "Select"}
+																			</Button>
+																		</div>
+																	</div>
+																</div>
+															))}
 														</div>
 													</div>
 
-													<div className="space-y-4">
-														<div className="space-y-2">
-															<Label>Credit Multiplier</Label>
-															<p className="text-sm text-muted-foreground">
-																Enter how many times more credit the dependency
-																you choose deserves (1-999)
-															</p>
-															<div className="flex gap-4 items-center">
-																<Input
-																	type="number"
-																	value={multiplier}
-																	onChange={(e) =>
-																		setMultiplier(e.target.value)
-																	}
-																	placeholder="Enter a number (1-999)"
-																	className="max-w-[200px]"
-																	min="1"
-																	max="999"
-																	step="0.01"
+													<div className="space-y-6 mt-8 pt-8 border-t">
+														<div className="space-y-4">
+															<div className="space-y-2">
+																<Label className="text-base">Credit Multiplier</Label>
+																<p className="text-sm text-muted-foreground">
+																	Enter how many times more credit the selected project deserves (1-999)
+																</p>
+																<div className="flex gap-4 items-center">
+																	<Input
+																		type="number"
+																		value={multiplier}
+																		onChange={(e) =>
+																			setMultiplier(e.target.value)
+																		}
+																		placeholder="Enter a number (1-999)"
+																		className="max-w-[200px]"
+																		min="1"
+																		max="999"
+																		step="0.01"
+																		disabled={isSubmitting}
+																	/>
+																</div>
+															</div>
+
+															<div className="space-y-2">
+																<Label htmlFor="reasoning" className="text-base">Reasoning</Label>
+																<p className="text-sm text-muted-foreground">
+																	Please explain your choice and the multiplier value (~200 words)
+																</p>
+																<Textarea
+																	id="reasoning"
+																	value={reasoning}
+																	onChange={(e) => setReasoning(e.target.value)}
+																	className="h-32"
+																	placeholder="Enter your reasoning..."
 																	disabled={isSubmitting}
 																/>
 															</div>
-														</div>
 
-														<div className="space-y-2">
-															<Label htmlFor="reasoning">Reasoning</Label>
-															<p className="text-sm text-muted-foreground">
-																Please explain your choice and the multiplier
-																value (~200 words)
-															</p>
-															<Textarea
-																id="reasoning"
-																value={reasoning}
-																onChange={(e) => setReasoning(e.target.value)}
-																className="h-32"
-																disabled={isSubmitting}
-															/>
-														</div>
-
-														<div className="flex flex-col items-center">
-															<Button
-																onClick={handleNext}
-																disabled={isSubmitting}
-																className="px-6 bg-green-600 hover:bg-green-700"
-															>
-																{isSubmitting ? (
-																	<>
-																		<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-																		<span>Submitting...</span>
-																	</>
-																) : (
-																	"Next"
+															<div className="flex flex-col items-center">
+																<Button
+																	onClick={handleNext}
+																	disabled={isSubmitting}
+																	className="px-6 bg-green-600 hover:bg-green-700"
+																>
+																	{isSubmitting ? (
+																		<>
+																			<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+																			<span>Submitting...</span>
+																		</>
+																	) : (
+																		"Next"
+																	)}
+																</Button>
+																{showSuccessMessage && (
+																	<span className="text-sm text-green-600">
+																		Previous response recorded successfully
+																	</span>
 																)}
-															</Button>
-															{showSuccessMessage && (
-																<span className="text-sm text-green-600">
-																	Previous response recorded successfully
-																</span>
-															)}
+															</div>
 														</div>
 													</div>
 												</div>
