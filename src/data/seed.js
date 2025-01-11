@@ -19,6 +19,6 @@ export const seeds = [
 	"https://github.com/ethereum/remix-project",
 	"https://github.com/safe-global/safe-smart-account",
 	"https://github.com/eth-infinitism/account-abstraction",
-  "https://github.com/nethermindeth/nethermind",
-  "https://github.com/hyperledger/besu",
+	"https://github.com/nethermindeth/nethermind",
+	"https://github.com/hyperledger/besu",
 ];

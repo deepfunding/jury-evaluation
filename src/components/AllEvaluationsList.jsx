@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { getComparisonResult } from '@/utils/comparisonUtils';
+import { getComparisonResult } from "@/utils/comparisonUtils";
 
 const ITEMS_PER_PAGE = 5;
 
@@ -109,7 +109,7 @@ export function AllEvaluationsList({
 		<div className="space-y-4">
 			<div className="flex-1 space-y-3">
 				{currentComparisons.map((comparison, index) => {
-					const { moreValuableProject, lessValuableProject, multiplier } = 
+					const { moreValuableProject, lessValuableProject, multiplier } =
 						getComparisonResult(comparison);
 
 					return (
@@ -133,7 +133,9 @@ export function AllEvaluationsList({
 										<span className="text-muted-foreground ml-1">
 											more valuable than
 										</span>
-										<span className="text-primary ml-1">{lessValuableProject}</span>
+										<span className="text-primary ml-1">
+											{lessValuableProject}
+										</span>
 									</div>
 
 									<div className="space-y-1.5">

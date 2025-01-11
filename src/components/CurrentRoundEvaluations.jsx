@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useState } from "react";
-import { getComparisonResult } from '@/utils/comparisonUtils';
+import { getComparisonResult } from "@/utils/comparisonUtils";
 
 const ITEMS_PER_PAGE = 3;
 
@@ -54,7 +54,7 @@ export function CurrentRoundEvaluations({ repoA, repoB, evaluations }) {
 				<div className="space-y-4">
 					<div className="flex-1 space-y-4">
 						{currentComparisons.map((comparison, index) => {
-							const { moreValuableProject, lessValuableProject, multiplier } = 
+							const { moreValuableProject, lessValuableProject, multiplier } =
 								getComparisonResult(comparison);
 							const isExpanded = expandedReasoning === index;
 							const truncatedReasoning = truncateText(comparison.reasoning);
@@ -70,7 +70,9 @@ export function CurrentRoundEvaluations({ repoA, repoB, evaluations }) {
 											</div>
 
 											<div className="text-sm">
-												<span className="text-primary">{moreValuableProject}</span>
+												<span className="text-primary">
+													{moreValuableProject}
+												</span>
 												<span className="text-muted-foreground ml-1">
 													rated
 												</span>

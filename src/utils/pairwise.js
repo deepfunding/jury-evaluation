@@ -40,7 +40,7 @@ export function generatePairs(items, numComparisons = 3) {
 	while (pairs.length < numComparisons) {
 		// Generate a random pair of indices
 		const [indexA, indexB] = generateRandomPair(itemCount);
-		
+
 		// Get the actual items
 		const itemA = items[indexA];
 		const itemB = items[indexB];

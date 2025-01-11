@@ -14,7 +14,13 @@ import {
 import { seeds } from "@/data/seed";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2 } from "lucide-react";
-import { ChevronLeft, ChevronRight, RefreshCw, ChevronDown, ChevronUp } from "lucide-react";
+import {
+	ChevronLeft,
+	ChevronRight,
+	RefreshCw,
+	ChevronDown,
+	ChevronUp,
+} from "lucide-react";
 import {
 	Dialog,
 	DialogContent,
@@ -26,7 +32,12 @@ import { MOCK_USER_DATA } from "@/data/mockData";
 import { ScrollText, ListChecks, Users } from "lucide-react";
 import { CurrentRoundEvaluations } from "@/components/CurrentRoundEvaluations";
 import { AllEvaluationsList } from "@/components/AllEvaluationsList";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const isDev = process.env.NODE_ENV === "development";
 
@@ -288,11 +299,11 @@ export default function Home() {
 
 			// Update UI state immediately
 			const currentRoundComparisons = newComparisons.filter(
-				(c) => c.round === round
+				(c) => c.round === round,
 			);
-			
+
 			if (currentRoundComparisons.length === 5) {
-        setIsEditMode(false);
+				setIsEditMode(false);
 				setShowReviewPanel(true);
 				setCurrentReviewRound(round);
 			} else if (isEditMode) {
@@ -345,7 +356,8 @@ export default function Home() {
 			if (existingIndex !== -1) {
 				finalComparisonRowNumbers[existingIndex] = newRowNumber;
 			} else {
-				finalComparisonRowNumbers[finalComparisonRowNumbers.length - 1] = newRowNumber;
+				finalComparisonRowNumbers[finalComparisonRowNumbers.length - 1] =
+					newRowNumber;
 			}
 			setComparisonRowNumbers(finalComparisonRowNumbers);
 
@@ -728,7 +740,7 @@ export default function Home() {
 
 	const getCurrentComparisonNumber = () => {
 		const currentRoundComparisons = comparisons.filter(
-			(c) => c.round === round
+			(c) => c.round === round,
 		);
 		return currentRoundComparisons.length + 1;
 	};
@@ -848,7 +860,9 @@ export default function Home() {
 									variant={currentView === "review" ? "default" : "outline"}
 									className="justify-start w-full"
 									onClick={() => handleViewChange("review")}
-									disabled={comparisons.filter((c) => c.round === round).length === 5}
+									disabled={
+										comparisons.filter((c) => c.round === round).length === 5
+									}
 								>
 									<ListChecks className="mr-2 h-4 w-4" />
 									Review
@@ -897,8 +911,8 @@ export default function Home() {
 												<>
 													<br />
 													You can finish now or continue with more comparisons.
-														Use the review button to check or edit your previous
-														responses.
+													Use the review button to check or edit your previous
+													responses.
 												</>
 											)}
 										</span>
@@ -954,12 +968,12 @@ export default function Home() {
 														</p>
 														<div className="grid grid-cols-2 gap-8">
 															{[0, 1].map((index) => (
-																<div 
+																<div
 																	key={index}
 																	className={`relative transition-all duration-200 ${
-																		selectedChoice === index + 1 
-																			? 'ring-2 ring-primary ring-offset-2' 
-																			: 'hover:shadow-md'
+																		selectedChoice === index + 1
+																			? "ring-2 ring-primary ring-offset-2"
+																			: "hover:shadow-md"
 																	}`}
 																>
 																	<div className="p-6 rounded-lg border bg-card">
@@ -969,27 +983,44 @@ export default function Home() {
 																					<Tooltip>
 																						<TooltipTrigger asChild>
 																							<a
-																								href={pairs[currentPairIndex][index]}
+																								href={
+																									pairs[currentPairIndex][index]
+																								}
 																								target="_blank"
 																								rel="noopener noreferrer"
 																								className="text-xl font-medium text-primary hover:underline text-center"
 																							>
-																								{formatRepoName(pairs[currentPairIndex][index])}
+																								{formatRepoName(
+																									pairs[currentPairIndex][
+																										index
+																									],
+																								)}
 																							</a>
 																						</TooltipTrigger>
 																						<TooltipContent>
-																							<span>Click to open GitHub repository in a new tab</span>
+																							<span>
+																								Click to open GitHub repository
+																								in a new tab
+																							</span>
 																						</TooltipContent>
 																					</Tooltip>
 																				</TooltipProvider>
 																			</div>
 																			<Button
-																				variant={selectedChoice === index + 1 ? "default" : "outline"}
-																				onClick={() => handleChoiceSelect(index + 1)}
+																				variant={
+																					selectedChoice === index + 1
+																						? "default"
+																						: "outline"
+																				}
+																				onClick={() =>
+																					handleChoiceSelect(index + 1)
+																				}
 																				className="w-full mt-4"
 																				disabled={isSubmitting}
 																			>
-																				{selectedChoice === index + 1 ? "Selected" : "Select"}
+																				{selectedChoice === index + 1
+																					? "Selected"
+																					: "Select"}
 																			</Button>
 																		</div>
 																	</div>
@@ -1001,9 +1032,12 @@ export default function Home() {
 													<div className="space-y-6 mt-8 pt-8 border-t">
 														<div className="space-y-4">
 															<div className="space-y-2">
-																<Label className="text-base">Credit Multiplier</Label>
+																<Label className="text-base">
+																	Credit Multiplier
+																</Label>
 																<p className="text-sm text-muted-foreground">
-																	Enter how many times more credit the selected project deserves (1-999)
+																	Enter how many times more credit the selected
+																	project deserves (1-999)
 																</p>
 																<div className="flex gap-4 items-center">
 																	<Input
@@ -1023,9 +1057,15 @@ export default function Home() {
 															</div>
 
 															<div className="space-y-2">
-																<Label htmlFor="reasoning" className="text-base">Reasoning</Label>
+																<Label
+																	htmlFor="reasoning"
+																	className="text-base"
+																>
+																	Reasoning
+																</Label>
 																<p className="text-sm text-muted-foreground">
-																	Please explain your choice and the multiplier value (~200 words)
+																	Please explain your choice and the multiplier
+																	value (~200 words)
 																</p>
 																<Textarea
 																	id="reasoning"
@@ -1082,14 +1122,18 @@ export default function Home() {
 																		className={`w-full flex justify-between items-center ${
 																			currentPairEvaluations[
 																				`${formatRepoName(pairs[currentPairIndex][0])}-${formatRepoName(pairs[currentPairIndex][1])}`
-																			]?.length 
-																				? "bg-blue-50 hover:bg-blue-100 border-blue-200" 
+																			]?.length
+																				? "bg-blue-50 hover:bg-blue-100 border-blue-200"
 																				: ""
 																		}`}
-																		onClick={() => setShowEvaluations(!showEvaluations)}
-																		disabled={!currentPairEvaluations[
-																			`${formatRepoName(pairs[currentPairIndex][0])}-${formatRepoName(pairs[currentPairIndex][1])}`
-																		]?.length}
+																		onClick={() =>
+																			setShowEvaluations(!showEvaluations)
+																		}
+																		disabled={
+																			!currentPairEvaluations[
+																				`${formatRepoName(pairs[currentPairIndex][0])}-${formatRepoName(pairs[currentPairIndex][1])}`
+																			]?.length
+																		}
 																	>
 																		<div className="flex items-center gap-2">
 																			<Users className="h-4 w-4" />
@@ -1106,10 +1150,9 @@ export default function Home() {
 															<TooltipContent>
 																{!currentPairEvaluations[
 																	`${formatRepoName(pairs[currentPairIndex][0])}-${formatRepoName(pairs[currentPairIndex][1])}`
-																]?.length 
+																]?.length
 																	? "No evaluations available for this pair yet"
-																	: "Click to view other evaluations"
-																}
+																	: "Click to view other evaluations"}
 															</TooltipContent>
 														</Tooltip>
 													</TooltipProvider>

@@ -1,8 +1,5 @@
 import { describe, test, expect } from "vitest";
-import {
-	generatePairs,
-	formatRepoName,
-} from "../pairwise";
+import { generatePairs, formatRepoName } from "../pairwise";
 import { seeds } from "../../data/seed";
 
 describe("generatePairs", () => {
@@ -38,7 +35,7 @@ describe("generatePairs", () => {
 			// Generate many pairs and track which pairs were generated
 			const iterations = 10000;
 			const pairCounts = new Map();
-			
+
 			for (let i = 0; i < iterations; i++) {
 				const pairs = generatePairs(seeds, 1);
 				const [a, b] = pairs[0].map(formatRepoName);
@@ -50,14 +47,13 @@ describe("generatePairs", () => {
 			const expectedPairs = new Set();
 			for (let i = 0; i < seeds.length; i++) {
 				for (let j = i + 1; j < seeds.length; j++) {
-					const pairKey = [
-						formatRepoName(seeds[i]),
-						formatRepoName(seeds[j])
-					].sort().join(",");
+					const pairKey = [formatRepoName(seeds[i]), formatRepoName(seeds[j])]
+						.sort()
+						.join(",");
 					expectedPairs.add(pairKey);
 				}
 			}
-			
+
 			const actualPairs = new Set(pairCounts.keys());
 			expect(actualPairs).toEqual(expectedPairs);
 		});
@@ -65,7 +61,7 @@ describe("generatePairs", () => {
 		test("generates pairs with uniform distribution", () => {
 			const iterations = 50000;
 			const pairCounts = new Map();
-			
+
 			// Generate pairs and count occurrences
 			for (let i = 0; i < iterations; i++) {
 				const pairs = generatePairs(seeds, 1);
@@ -77,9 +73,11 @@ describe("generatePairs", () => {
 			// Calculate expected count and standard deviation
 			const totalPossiblePairs = (seeds.length * (seeds.length - 1)) / 2;
 			const expectedCount = iterations / totalPossiblePairs;
-			const stdDev = Math.sqrt(iterations * (1/totalPossiblePairs) * (1 - 1/totalPossiblePairs));
+			const stdDev = Math.sqrt(
+				iterations * (1 / totalPossiblePairs) * (1 - 1 / totalPossiblePairs),
+			);
 			const threeSigma = 3 * stdDev;
-			
+
 			// Each pair should appear within 3 standard deviations of the expected count
 			for (const count of pairCounts.values()) {
 				expect(Math.abs(count - expectedCount)).toBeLessThan(threeSigma);
@@ -90,7 +88,9 @@ describe("generatePairs", () => {
 	describe("error cases", () => {
 		test("throws error for insufficient items", () => {
 			expect(() => generatePairs([], 5)).toThrow("Need at least 2 items");
-			expect(() => generatePairs([seeds[0]], 5)).toThrow("Need at least 2 items");
+			expect(() => generatePairs([seeds[0]], 5)).toThrow(
+				"Need at least 2 items",
+			);
 		});
 	});
 });
