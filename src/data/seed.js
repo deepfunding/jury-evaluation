@@ -22,6 +22,7 @@ export const seeds = [
 	"https://github.com/nethermindeth/nethermind",
 	"https://github.com/hyperledger/besu",
 	"https://github.com/ethers-io/ethers.js",
+  "https://github.com/nomicfoundation/hardhat",
 	"https://github.com/a16z/helios",
 	"https://github.com/hyperledger-web3j/web3j",
 	"https://github.com/alloy-rs/alloy",
