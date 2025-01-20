@@ -1,4 +1,4 @@
-// src: https://github.com/deepfunding/dependency-graph/blob/acf3ee981ad382fde921e64c027f8b9cfe1343d8/datasets/pairwise/get1stLevelCategoryList.json
+// src: https://github.com/deepfunding/dependency-graph/blob/9143bb6fc08570689c50340c113f9c224de3820c/datasets/pairwise/get1stLevelCategoryList.json
 
 export const seeds = [
 	"https://github.com/ethereum/solidity",
@@ -21,4 +21,18 @@ export const seeds = [
 	"https://github.com/eth-infinitism/account-abstraction",
 	"https://github.com/nethermindeth/nethermind",
 	"https://github.com/hyperledger/besu",
+	"https://github.com/ethers-io/ethers.js",
+	"https://github.com/a16z/helios",
+	"https://github.com/hyperledger-web3j/web3j",
+	"https://github.com/alloy-rs/alloy",
+	"https://github.com/nethereum/nethereum",
+	"https://github.com/wevm/viem",
+	"https://github.com/foundry-rs/foundry",
+	"https://github.com/apeworx/ape",
+	"https://github.com/vyperlang/titanoboa",
+	"https://github.com/ethereum-lists/chains",
+	"https://github.com/ethereum/fe",
+	"https://github.com/ethereum/sourcify",
+	"https://github.com/openzeppelin/openzeppelin-contracts",
+	"https://github.com/scaffold-eth/scaffold-eth-2",
 ];
