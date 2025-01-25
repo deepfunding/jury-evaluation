@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { getComparisonResult } from "@/utils/comparisonUtils";
+import { isActiveRepo } from "@/utils/pairwise";
 
 const ITEMS_PER_PAGE = 5;
 
@@ -15,25 +16,31 @@ export function AllEvaluationsList({
 }) {
 	const [currentPage, setCurrentPage] = useState(1);
 
+	// Filter out comparisons with inactive repositories
+	const filteredComparisons = comparisons.filter(
+		(comparison) =>
+			isActiveRepo(comparison.itemAName) && isActiveRepo(comparison.itemBName),
+	);
+
 	useEffect(() => {
 		setCurrentPage(1);
 	}, [selectedFilterRepo]);
 
-	const totalPages = Math.ceil(comparisons.length / ITEMS_PER_PAGE);
+	const totalPages = Math.ceil(filteredComparisons.length / ITEMS_PER_PAGE);
 
 	useEffect(() => {
-		const totalPages = Math.ceil(comparisons.length / ITEMS_PER_PAGE);
+		const totalPages = Math.ceil(filteredComparisons.length / ITEMS_PER_PAGE);
 		const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
 		const endIndex = startIndex + ITEMS_PER_PAGE;
 
 		onPaginationChange?.({
 			startIndex: startIndex + 1,
-			endIndex: Math.min(endIndex, comparisons.length),
-			total: comparisons.length,
+			endIndex: Math.min(endIndex, filteredComparisons.length),
+			total: filteredComparisons.length,
 		});
-	}, [currentPage, comparisons.length, onPaginationChange]);
+	}, [currentPage, filteredComparisons.length, onPaginationChange]);
 
-	if (comparisons.length === 0) {
+	if (filteredComparisons.length === 0) {
 		return (
 			<div className="text-sm text-muted-foreground">No evaluations found.</div>
 		);
@@ -41,7 +48,7 @@ export function AllEvaluationsList({
 
 	const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
 	const endIndex = startIndex + ITEMS_PER_PAGE;
-	const currentComparisons = comparisons.slice(startIndex, endIndex);
+	const currentComparisons = filteredComparisons.slice(startIndex, endIndex);
 
 	const getComparisonHeader = (comparison) => {
 		if (selectedFilterRepo) {

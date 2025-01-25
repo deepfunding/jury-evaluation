@@ -24,26 +24,38 @@ function generateRandomPair(range) {
 }
 
 /**
+ * Checks if a repository URL is active (not marked as inactive)
+ * @param {string} repoUrl - The repository URL to check
+ * @returns {boolean} True if the repository is active, false otherwise
+ */
+export function isActiveRepo(repoUrl) {
+	return !repoUrl.startsWith("[INACTIVE]");
+}
+
+/**
  * Generates random pairs from an array of items for pairwise comparison
  * @param {Array} items - Array of items to compare
  * @param {number} numComparisons - Number of comparisons to generate
  * @returns {Array} Array of pairs, each containing [itemA, itemB]
  */
 export function generatePairs(items, numComparisons = 3) {
-	if (items.length < 2) {
-		throw new Error("Need at least 2 items to generate pairs");
+	// Filter out inactive repositories
+	const activeItems = items.filter(isActiveRepo);
+
+	if (activeItems.length < 2) {
+		throw new Error("Need at least 2 active items to generate pairs");
 	}
 
 	const pairs = [];
-	const itemCount = items.length;
+	const itemCount = activeItems.length;
 
 	while (pairs.length < numComparisons) {
 		// Generate a random pair of indices
 		const [indexA, indexB] = generateRandomPair(itemCount);
 
 		// Get the actual items
-		const itemA = items[indexA];
-		const itemB = items[indexB];
+		const itemA = activeItems[indexA];
+		const itemB = activeItems[indexB];
 
 		// Check if this pair (in either order) already exists
 		const pairExists = pairs.some(

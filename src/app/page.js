@@ -10,6 +10,7 @@ import {
 	generatePairs,
 	formatRepoName,
 	isValidMultiplier,
+	isActiveRepo,
 } from "@/utils/pairwise";
 import { seeds } from "@/data/seed";
 import { Textarea } from "@/components/ui/textarea";
@@ -1223,7 +1224,7 @@ export default function Home() {
 														value={selectedFilterRepo || ""}
 													>
 														<option value="">All Projects</option>
-														{seeds.map((repo, index) => (
+														{seeds.filter(isActiveRepo).map((repo, index) => (
 															<option key={index} value={formatRepoName(repo)}>
 																{formatRepoName(repo)}
 															</option>
